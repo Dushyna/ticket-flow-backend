@@ -1,0 +1,79 @@
+spring:
+  application:
+    name: TicketFlow SaaS
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ticketflow
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
+
+  docker:
+    compose:
+      enabled: false
+
+  mail:
+    host: ${EMAIL_HOST:smtp.gmail.com}
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+confirmation:
+  expiration:
+    days: ${CONFIRMATION_EXPIRATION_DAYS:2}
+
+app:
+  base-url: ${BASE_URL:http://localhost:8080}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  upload:
+    dir: ${UPLOAD_DIR:uploads/attachments}
+
+digitalocean:
+  spaces:
+    access-key: ${DO_SPACES_ACCESS_KEY:fake}
+    secret-key: ${DO_SPACES_SECRET_KEY:fake}
+    endpoint: ${DO_SPACES_ENDPOINT:https://fra1.digitaloceanspaces.com}
+    region: ${DO_SPACES_REGION:fra1}
+    bucket-name: ${DO_SPACES_BUCKET:ticketflow-storage}
+
+jwt:
+  at:
+    live-in-min: ${JWT_AT_LIVE_IN_MIN:15}
+    secret: ${JWT_AT_SECRET}
+  rt:
+    live-in-min: ${JWT_RT_LIVE_IN_MIN:10080}
+    secret: ${JWT_RT_SECRET}
+
