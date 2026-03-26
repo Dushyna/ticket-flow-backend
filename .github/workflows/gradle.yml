@@ -12,12 +12,16 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_DB: ticketflow_db
+          POSTGRES_DB: ticketflow
           POSTGRES_PASSWORD: test
           POSTGRES_USER: test
         ports:
           - 5432:5432
-
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -28,7 +32,13 @@ jobs:
 
       - name: Build with Gradle
         env:
+          DB_USERNAME: test
+          DB_PASSWORD: test
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ticketflow_db
-          SPRING_DATASOURCE_USERNAME: test
-          SPRING_DATASOURCE_PASSWORD: test
+          CLIENT_ID: fake-id
+          CLIENT_SECRET: fake-secret
+          EMAIL_USERNAME: fake@mail.com
+          EMAIL_PASSWORD: fake-password
+          JWT_AT_SECRET: V2VyeWRvbmdTZWNyZXRLZXlGb3JBY2Nlc3NUb2tlbjMyQnl0ZXN0cm9uZw==
+          JWT_RT_SECRET: V2VyeWRvbmdTZWNyZXRLZXlGb3JSZWZyZXNoVG9rZW4zMkJ5dGVzdHJvbmc=
         run: chmod +x gradlew && ./gradlew build
