@@ -34,7 +34,7 @@ jobs:
         env:
           DB_USERNAME: test
           DB_PASSWORD: test
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ticketflow_db
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ticketflow
           CLIENT_ID: fake-id
           CLIENT_SECRET: fake-secret
           EMAIL_USERNAME: fake@mail.com
