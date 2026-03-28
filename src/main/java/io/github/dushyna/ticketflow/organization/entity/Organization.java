@@ -52,8 +52,6 @@ public class Organization extends BaseEntity {
                 ", name='" + name + '\'' +
                 ", slug='" + slug + '\'' +
                 ", contactEmail='" + contactEmail + '\'' +
-                ", createdAt=" + String.valueOf(createdAt) +
-                ", updatedAt=" + String.valueOf(updatedAt) +
                 "}";
     }
 }

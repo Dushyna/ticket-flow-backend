@@ -7,6 +7,7 @@ import io.github.dushyna.ticketflow.user.dto.response.UserCreateResponseDto;
 import io.github.dushyna.ticketflow.user.dto.response.UserResponseDto;
 import io.github.dushyna.ticketflow.user.service.impl.UserRegisterServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,9 @@ import java.net.URI;
 public class RegisterController implements RegisterControllerApi {
 
     private final UserRegisterServiceImpl service;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     @Override
     public UserCreateResponseDto registerCustomer(UserCreateDto registerUser) {
@@ -39,7 +43,7 @@ public class RegisterController implements RegisterControllerApi {
     @GetMapping("/confirm-redirect/{code}")
     public ResponseEntity<Void> confirmEmailRedirect(@PathVariable String code) {
         service.confirmRegistration(code);
-        URI redirectUri = URI.create("http://localhost:5173/#/login?confirmed=true");
+        URI redirectUri = URI.create(frontendUrl + "/#/login?confirmed=true");
         return ResponseEntity.status(HttpStatus.FOUND).location(redirectUri).build();
     }
 }

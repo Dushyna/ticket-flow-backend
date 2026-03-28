@@ -4,10 +4,10 @@ import io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApi
 import io.github.dushyna.ticketflow.mail.EmailService;
 import io.github.dushyna.ticketflow.security.dto.LoginRequest;
 import io.github.dushyna.ticketflow.security.entities.PasswordResetToken;
-import io.github.dushyna.ticketflow.security.dto.response.TokenResponseDto;
 import io.github.dushyna.ticketflow.security.repository.PasswordResetTokenRepository;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
 import io.github.dushyna.ticketflow.user.repository.UserRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -33,8 +33,9 @@ public class AuthService {
     private final EmailService emailService;
     private final PasswordResetService passwordResetService;
     private final PasswordEncoder passwordEncoder;
+    private final CookieService cookieService;
 
-    public TokenResponseDto login(LoginRequest loginRequest) {
+    public void login(LoginRequest loginRequest, HttpServletResponse response) {
         String userEmail = loginRequest.email();
         UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
@@ -67,7 +68,8 @@ public class AuthService {
 
         String accessToken = jwtTokenService.generateAccessToken(userEmail);
         String refreshToken = jwtTokenService.generateRefreshToken(userEmail);
-        return new TokenResponseDto(accessToken, refreshToken);
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookieService.generateAccessTokenCookie(accessToken));
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookieService.generateRefreshTokenCookie(refreshToken));
     }
 
     public String refreshAccessToken(String refreshToken) {
