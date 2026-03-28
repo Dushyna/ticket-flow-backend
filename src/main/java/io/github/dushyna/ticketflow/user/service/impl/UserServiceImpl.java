@@ -6,16 +6,13 @@ import io.github.dushyna.ticketflow.user.entity.AppUser;
 import io.github.dushyna.ticketflow.user.exception.UserNotFoundException;
 import io.github.dushyna.ticketflow.user.repository.UserRepository;
 import io.github.dushyna.ticketflow.user.service.interfaces.UserService;
-import io.github.dushyna.ticketflow.user.util.AppUserMapper;
-import io.github.dushyna.ticketflow.user.util.UserUtils;
+import io.github.dushyna.ticketflow.user.utils.AppUserMapper;
+import io.github.dushyna.ticketflow.user.utils.UserUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Service for various operations with Employees
@@ -43,12 +40,6 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(UserNotFoundException::new);
     }
 
-    @Override
-    public AppUser getByIdOrThrow(String id) {
-        return repository
-                .findById(UUID.fromString(id))
-                .orElseThrow(UserNotFoundException::new);
-    }
 
     @Override
     public List<UserResponseDto> getAll() {
@@ -59,44 +50,30 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserResponseDto getUserDetails() {
-        AppUser user = getCurrentUserOrThrow();
-        return mappingService.mapEntityToResponseDto(user);
+    public UserResponseDto getUserDetails(AppUser currentUser) {
+        return mappingService.mapEntityToResponseDto(currentUser);
     }
 
     @Override
     @Transactional
-    public UserResponseDto updateUserDetails(UpdateUserDetailsDto dto) {
-        AppUser user = getCurrentUserOrThrow();
-
+    public UserResponseDto updateUserDetails(UpdateUserDetailsDto dto, AppUser currentUser) {
         if (dto.firstName() != null) {
-            user.setFirstName(UserUtils.normalizeUserName(dto.firstName()));
+            currentUser.setFirstName(UserUtils.normalizeUserName(dto.firstName()));
         }
 
         if (dto.lastName() != null) {
-            user.setLastName(UserUtils.normalizeUserName(dto.lastName()));
+            currentUser.setLastName(UserUtils.normalizeUserName(dto.lastName()));
         }
 
         if (dto.birthDate() != null) {
-            user.setBirthDate(dto.birthDate());
+            currentUser.setBirthDate(dto.birthDate());
         }
 
         if (dto.phone() != null) {
-            user.setPhone(dto.phone());
+            currentUser.setPhone(dto.phone());
         }
 
-        AppUser saved = repository.save(user);
+        AppUser saved = repository.save(currentUser);
         return mappingService.mapEntityToResponseDto(saved);
-    }
-
-    private AppUser getCurrentUserOrThrow() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getName() == null) {
-            throw new UserNotFoundException();
-        }
-
-        String email = auth.getName();
-        return repository.findByEmailIgnoreCase(email)
-                .orElseThrow(UserNotFoundException::new);
     }
 }

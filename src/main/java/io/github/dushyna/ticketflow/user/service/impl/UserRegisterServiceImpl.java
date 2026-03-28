@@ -14,7 +14,7 @@ import io.github.dushyna.ticketflow.user.entity.Role;
 import io.github.dushyna.ticketflow.user.exception.UserAlreadyExistException;
 import io.github.dushyna.ticketflow.user.service.interfaces.UserRegisterService;
 import io.github.dushyna.ticketflow.user.service.interfaces.UserService;
-import io.github.dushyna.ticketflow.user.util.AppUserMapper;
+import io.github.dushyna.ticketflow.user.utils.AppUserMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;

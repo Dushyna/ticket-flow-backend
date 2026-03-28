@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDate;
@@ -83,7 +82,7 @@ public class AppUser extends BaseEntity {
         this.provider = provider;
         this.providerId = providerId;
         this.role = Role.ROLE_USER;
-        this.confirmationStatus = ConfirmationStatus.CONFIRMED; // OAuth пользователи обычно подтверждены
+        this.confirmationStatus = ConfirmationStatus.CONFIRMED;
     }
 
     @Override

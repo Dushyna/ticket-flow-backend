@@ -1,4 +1,4 @@
-package io.github.dushyna.ticketflow.user.util;
+package io.github.dushyna.ticketflow.user.utils;
 
 import io.github.dushyna.ticketflow.user.dto.EmployeeDto;
 import io.github.dushyna.ticketflow.user.dto.response.UserResponseDto;

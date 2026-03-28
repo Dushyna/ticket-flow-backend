@@ -1,4 +1,4 @@
-package io.github.dushyna.ticketflow.user.util;
+package io.github.dushyna.ticketflow.user.utils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.multipart.MultipartFile;

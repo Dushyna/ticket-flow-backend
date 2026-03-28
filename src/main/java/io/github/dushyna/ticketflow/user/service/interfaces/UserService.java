@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Service for various operations with Employees
+ * Service for various operations with Users/Employees.
+ * Refactored to accept currentUser as an argument for better testability and decoupling.
  */
 public interface UserService {
 
@@ -18,11 +19,19 @@ public interface UserService {
 
     AppUser getByEmailOrThrow(String email);
 
-    AppUser getByIdOrThrow(String id);
 
     List<UserResponseDto> getAll();
 
-    UserResponseDto getUserDetails();
+    /**
+     * Maps the provided user entity to a response DTO.
+     * @param currentUser the user fetched in the controller/security layer
+     */
+    UserResponseDto getUserDetails(AppUser currentUser);
 
-    UserResponseDto updateUserDetails(UpdateUserDetailsDto dto);
+    /**
+     * Updates details for the specifically provided user.
+     * @param dto data to update
+     * @param currentUser the target user entity
+     */
+    UserResponseDto updateUserDetails(UpdateUserDetailsDto dto, AppUser currentUser);
 }

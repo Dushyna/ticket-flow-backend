@@ -2,7 +2,7 @@ package io.github.dushyna.ticketflow.security.controller;
 
 import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
 import io.github.dushyna.ticketflow.user.dto.response.UserResponseDto;
-import io.github.dushyna.ticketflow.user.util.AppUserMapper;
+import io.github.dushyna.ticketflow.user.utils.AppUserMapper;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.security.PermitAll;

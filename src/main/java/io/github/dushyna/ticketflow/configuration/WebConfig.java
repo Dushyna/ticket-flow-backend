@@ -15,9 +15,18 @@ public class WebConfig implements WebMvcConfigurer {
     private String uploadDir;
 
     @Override
+    public void addCorsMappings(org.springframework.web.servlet.config.annotation.CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("http://localhost:5173", "http://localhost:3000")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
+
+    @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
-        String resourceLocation = "file:" + uploadPath.toString() + "/";
+        String resourceLocation = "file:" + uploadPath + "/";
 
         registry.addResourceHandler("/api/v1/attachments/download/**")
                 .addResourceLocations(resourceLocation);
