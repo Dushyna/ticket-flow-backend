@@ -9,6 +9,7 @@ import io.github.dushyna.ticketflow.cinema.repository.MovieHallRepository;
 import io.github.dushyna.ticketflow.cinema.service.interfaces.MovieHallService;
 import io.github.dushyna.ticketflow.cinema.utils.MovieHallMapper;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -83,10 +84,27 @@ public class MovieHallServiceImpl implements MovieHallService {
         movieHallRepository.delete(hall);
     }
 
+    @Override
+    @Transactional
+    public MovieHallResponseDto updateHall(UUID id, MovieHallCreateDto dto, AppUser currentUser) {
+        MovieHall hall = movieHallRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Hall not found with id: " + id));
+
+        validateAccess(hall.getCinema(), currentUser);
+
+        hall.setName(dto.name());
+        hall.setRowsCount(dto.rows());
+        hall.setColsCount(dto.cols());
+        hall.setLayoutConfig(dto.layoutConfig());
+
+        MovieHall saved = movieHallRepository.save(hall);
+        return mappingService.mapEntityToResponseDto(saved);
+    }
+
     private void validateAccess(Cinema cinema, AppUser user) {
         if (user.getOrganization() == null ||
                 !cinema.getOrganization().getId().equals(user.getOrganization().getId())) {
-            throw new AccessDeniedException("You do not have permission to manage halls in this cinema");
+            throw new AccessDeniedException("Forbidden: You don't have access to this cinema's halls");
         }
     }
 }

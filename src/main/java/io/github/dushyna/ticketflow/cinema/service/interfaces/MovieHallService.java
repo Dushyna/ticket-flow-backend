@@ -19,4 +19,7 @@ public interface MovieHallService {
     List<MovieHallResponseDto> getAllByCinema(UUID cinemaId, AppUser currentUser);
 
     void deleteHall(UUID id, AppUser currentUser);
+
+    MovieHallResponseDto updateHall(UUID id, MovieHallCreateDto dto, AppUser currentUser);
+
 }

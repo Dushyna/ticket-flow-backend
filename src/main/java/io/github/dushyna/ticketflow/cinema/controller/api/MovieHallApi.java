@@ -25,4 +25,11 @@ public interface MovieHallApi extends MovieHallApiSwaggerDoc {
     MovieHallResponseDto getById(
             @PathVariable UUID id
     );
+
+    @PutMapping("/{id}")
+    MovieHallResponseDto update(
+            @PathVariable UUID id,
+            @Valid @RequestBody MovieHallCreateDto dto
+    );
+
 }

@@ -35,4 +35,13 @@ public interface MovieHallApiSwaggerDoc {
     @Operation(summary = "Get hall details by ID")
     @SecurityRequirement(name = "bearerAuth")
     MovieHallResponseDto getById(UUID id);
+
+    @Operation(summary = "Update an existing hall layout")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Hall updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Hall not found")
+    })
+    MovieHallResponseDto update(UUID id, MovieHallCreateDto dto);
+
 }
