@@ -40,4 +40,12 @@ public class MovieHallController implements MovieHallApi {
         var currentUser = userService.getByEmailOrThrow(email);
         return hallService.getByIdOrThrow(id, currentUser);
     }
+
+    @Override
+    public MovieHallResponseDto update(UUID id, MovieHallCreateDto dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        var currentUser = userService.getByEmailOrThrow(email);
+        return hallService.updateHall(id, dto, currentUser);
+    }
+
 }
