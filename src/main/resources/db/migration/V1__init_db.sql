@@ -10,7 +10,7 @@ CREATE TABLE organizations (
 CREATE TABLE app_user (
                           id UUID PRIMARY KEY,
                           email VARCHAR(255) NOT NULL UNIQUE,
-                          password VARCHAR(255), -- Убрали NOT NULL для поддержки OAuth2
+                          password VARCHAR(255),
                           first_name VARCHAR(100),
                           last_name VARCHAR(100),
                           birth_date DATE,
