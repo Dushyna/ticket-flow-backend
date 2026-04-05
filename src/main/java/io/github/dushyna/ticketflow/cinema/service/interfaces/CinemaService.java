@@ -14,7 +14,13 @@ public interface CinemaService {
 
     CinemaResponseDto createCinema(CinemaCreateDto dto, AppUser currentUser);
 
+    CinemaResponseDto updateCinema(UUID id, CinemaCreateDto dto, AppUser currentUser);
+
+
     List<CinemaResponseDto> getAllByOrganization(AppUser currentUser);
 
     CinemaResponseDto getByIdOrThrow(UUID id, AppUser currentUser);
+
+    void deleteCinema(UUID id, AppUser currentUser);
+
 }

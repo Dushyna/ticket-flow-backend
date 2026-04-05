@@ -44,4 +44,7 @@ public interface MovieHallApiSwaggerDoc {
     })
     MovieHallResponseDto update(UUID id, MovieHallCreateDto dto);
 
+    @Operation(summary = "Delete movie hall", description = "Permanently removes a hall from the cinema")
+    void delete(UUID id);
+
 }
