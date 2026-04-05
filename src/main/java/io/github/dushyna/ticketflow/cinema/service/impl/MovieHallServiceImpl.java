@@ -38,12 +38,22 @@ public class MovieHallServiceImpl implements MovieHallService {
 
         validateAccess(cinema, currentUser);
 
-        MovieHall hall = new MovieHall();
-        hall.setName(dto.name());
+        MovieHall hall = mappingService.mapDtoToEntity(dto);
         hall.setCinema(cinema);
-        hall.setRowsCount(dto.rows());
-        hall.setColsCount(dto.cols());
-        hall.setLayoutConfig(dto.layoutConfig());
+
+        MovieHall saved = movieHallRepository.save(hall);
+        return mappingService.mapEntityToResponseDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public MovieHallResponseDto updateHall(UUID id, MovieHallCreateDto dto, AppUser currentUser) {
+        MovieHall hall = movieHallRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Hall not found with id: " + id));
+
+        validateAccess(hall.getCinema(), currentUser);
+
+        mappingService.updateEntityFromDto(dto, hall);
 
         MovieHall saved = movieHallRepository.save(hall);
         return mappingService.mapEntityToResponseDto(saved);
@@ -82,23 +92,6 @@ public class MovieHallServiceImpl implements MovieHallService {
         validateAccess(hall.getCinema(), currentUser);
 
         movieHallRepository.delete(hall);
-    }
-
-    @Override
-    @Transactional
-    public MovieHallResponseDto updateHall(UUID id, MovieHallCreateDto dto, AppUser currentUser) {
-        MovieHall hall = movieHallRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Hall not found with id: " + id));
-
-        validateAccess(hall.getCinema(), currentUser);
-
-        hall.setName(dto.name());
-        hall.setRowsCount(dto.rows());
-        hall.setColsCount(dto.cols());
-        hall.setLayoutConfig(dto.layoutConfig());
-
-        MovieHall saved = movieHallRepository.save(hall);
-        return mappingService.mapEntityToResponseDto(saved);
     }
 
     private void validateAccess(Cinema cinema, AppUser user) {

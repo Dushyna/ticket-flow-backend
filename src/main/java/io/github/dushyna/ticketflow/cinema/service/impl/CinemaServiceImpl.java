@@ -28,11 +28,23 @@ public class CinemaServiceImpl implements CinemaService {
         if (currentUser.getOrganization() == null) {
             throw new AccessDeniedException("User must belong to an organization to create a cinema");
         }
+        Cinema cinema = mappingService.mapDtoToEntity(dto);
 
-        Cinema cinema = new Cinema();
-        cinema.setName(dto.name());
-        cinema.setAddress(dto.address());
         cinema.setOrganization(currentUser.getOrganization());
+
+        Cinema saved = cinemaRepository.save(cinema);
+        return mappingService.mapEntityToResponseDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public CinemaResponseDto updateCinema(UUID id, CinemaCreateDto dto, AppUser currentUser) {
+        Cinema cinema = cinemaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cinema not found with id: " + id));
+
+        validateAccess(cinema, currentUser);
+
+        mappingService.updateEntityFromDto(dto, cinema);
 
         Cinema saved = cinemaRepository.save(cinema);
         return mappingService.mapEntityToResponseDto(saved);
@@ -61,6 +73,18 @@ public class CinemaServiceImpl implements CinemaService {
 
         return mappingService.mapEntityToResponseDto(cinema);
     }
+
+    @Override
+    @Transactional
+    public void deleteCinema(UUID id, AppUser currentUser) {
+        Cinema cinema = cinemaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cinema not found with id: " + id));
+
+        validateAccess(cinema, currentUser);
+
+        cinemaRepository.delete(cinema);
+    }
+
 
     private void validateAccess(Cinema cinema, AppUser user) {
         if (user.getOrganization() == null ||
