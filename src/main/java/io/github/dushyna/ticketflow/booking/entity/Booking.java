@@ -9,7 +9,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import io.github.dushyna.ticketflow.cinema.entity.Showtime;
+import io.github.dushyna.ticketflow.cinema.entity.TicketType;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -27,11 +30,23 @@ public class Booking extends BaseEntity {
     @JoinColumn(name = "hall_id", nullable = false)
     private MovieHall hall;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "showtime_id", nullable = false)
+    private Showtime showtime;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ticket_type_id")
+    private TicketType ticketType;
+
     @Column(name = "row_index", nullable = false)
     private Integer rowIndex;
 
     @Column(name = "col_index", nullable = false)
     private Integer colIndex;
+
+    @Column(name = "final_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal finalPrice;
+
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

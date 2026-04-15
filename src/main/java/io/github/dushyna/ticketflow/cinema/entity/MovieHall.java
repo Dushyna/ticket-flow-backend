@@ -43,8 +43,6 @@ public class MovieHall extends BaseEntity {
     @Column(name = "layout_config", columnDefinition = "jsonb", nullable = false)
     private Map<String, Object> layoutConfig;
 
-    // У MovieHall.java
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private java.time.Instant createdAt;

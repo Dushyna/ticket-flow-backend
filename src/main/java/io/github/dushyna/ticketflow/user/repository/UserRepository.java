@@ -14,4 +14,7 @@ public interface UserRepository extends JpaRepository<AppUser, UUID> {
     @Query("select a from AppUser a where upper(a.email) = upper(?1)")
     Optional<AppUser> findByEmailIgnoreCase(String email);
     boolean existsByEmailIgnoreCase(String email);
+
+    @Query("SELECT u FROM AppUser u LEFT JOIN FETCH u.organization WHERE UPPER(u.email) = UPPER(?1)")
+    Optional<AppUser> findByEmailWithOrganization(String email);
 }

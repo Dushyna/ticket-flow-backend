@@ -31,4 +31,8 @@ public interface ShowtimeApi extends ShowtimeApiSwaggerDoc {
 
     @GetMapping("/hall/{hallId}")
     List<ShowtimeResponseDto> getByHall(@PathVariable UUID hallId);
+
+    @GetMapping("/cinema/{cinemaId}")
+    List<ShowtimeResponseDto> getByCinema(@PathVariable UUID cinemaId);
+
 }

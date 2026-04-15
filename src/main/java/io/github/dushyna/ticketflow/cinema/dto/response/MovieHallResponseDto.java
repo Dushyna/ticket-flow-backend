@@ -15,6 +15,9 @@ public record MovieHallResponseDto(
         @Schema(description = "ID of the cinema building this hall belongs to", example = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
         UUID cinemaId,
 
+        @Schema(description = "ID of the organization building this hall belongs to", example = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+        UUID organizationId,
+
         @Schema(description = "Number of rows in the seat grid", example = "10")
         Integer rowsCount,
 

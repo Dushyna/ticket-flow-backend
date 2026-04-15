@@ -115,6 +115,14 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 .toList();
     }
 
+    public List<ShowtimeResponseDto> getShowtimesByCinema(UUID cinemaId) {
+        List<Showtime> showtimes = showtimeRepository.findAllByCinemaIdWithDetails(cinemaId);
+        System.out.println("DEBUG: Found " + showtimes.size() + " showtimes for cinema " + cinemaId);
+        return showtimes.stream()
+                .map(showtimeMapper::mapEntityToResponseDto)
+                .toList();
+    }
+
     private void validateNoConflicts(UUID hallId, Instant start, Instant end, UUID excludeId) {
         boolean hasConflict = showtimeRepository.existsOverlappingShowtime(hallId, start, end, excludeId);
         if (hasConflict) {
