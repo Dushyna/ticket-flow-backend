@@ -16,6 +16,9 @@ public record ShowtimeResponseDto(
         @Schema(description = "Title of the scheduled movie", example = "Interstellar")
         String movieTitle,
 
+        @Schema(description = "Unique identifier of the hall", example = "550e8402-e29b-41d4-a716-446655440001")
+        UUID hallId,
+
         @Schema(description = "Name of the movie hall", example = "IMAX Hall 1")
         String hallName,
 

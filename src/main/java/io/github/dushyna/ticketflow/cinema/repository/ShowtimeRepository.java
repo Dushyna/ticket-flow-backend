@@ -23,4 +23,12 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
     );
 
     List<Showtime> findAllByMovieId(UUID movieId);
+
+    @Query("SELECT s FROM Showtime s " +
+            "JOIN FETCH s.movie " +
+            "JOIN FETCH s.hall " +
+            "WHERE s.hall.cinema.id = :cinemaId " +
+            "ORDER BY s.startTime ASC")
+    List<Showtime> findAllByCinemaIdWithDetails(@Param("cinemaId") UUID cinemaId);
+
 }

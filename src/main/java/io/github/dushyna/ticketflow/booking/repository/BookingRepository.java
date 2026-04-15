@@ -13,16 +13,21 @@ import java.util.UUID;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
-    @Query("SELECT b FROM Booking b WHERE b.hall.id = :hallId AND b.status IN :statuses")
-    List<Booking> findAllActiveBookings(
-            @Param("hallId") UUID hallId,
-            @Param("statuses") List<BookingStatus> statuses
-    );
+    List<Booking> findAllByShowtimeIdAndStatusIn(UUID showtimeId, List<BookingStatus> statuses);
 
-    boolean existsByHallIdAndRowIndexAndColIndexAndStatusIn(
-            UUID hallId,
+    boolean existsByShowtimeIdAndRowIndexAndColIndexAndStatusIn(
+            UUID showtimeId,
             Integer rowIndex,
             Integer colIndex,
             List<BookingStatus> statuses
     );
+
+    @Query("SELECT b FROM Booking b " +
+            "JOIN FETCH b.showtime s " +
+            "JOIN FETCH s.movie " +
+            "JOIN FETCH b.hall " +
+            "LEFT JOIN FETCH b.ticketType " +
+            "WHERE b.user.id = :userId " +
+            "ORDER BY b.createdAt DESC")
+    List<Booking> findAllByUserIdWithDetails(@Param("userId") UUID userId);
 }

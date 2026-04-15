@@ -50,6 +50,11 @@ public class ShowtimeController implements ShowtimeApi {
         return showtimeService.getShowtimesByHall(hallId);
     }
 
+    @Override
+    public List<ShowtimeResponseDto> getByCinema(UUID cinemaId) {
+        return showtimeService.getShowtimesByCinema(cinemaId);
+    }
+
     private AppUser getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userService.getByEmailOrThrow(email);

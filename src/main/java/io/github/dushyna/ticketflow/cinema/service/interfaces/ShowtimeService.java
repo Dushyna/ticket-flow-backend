@@ -19,5 +19,7 @@ public interface ShowtimeService {
 
     List<ShowtimeResponseDto> getShowtimesByMovie(UUID movieId);
 
+    List<ShowtimeResponseDto> getShowtimesByCinema(UUID cinemaId);
+
     ShowtimeResponseDto getByIdOrThrow(UUID id);
 }

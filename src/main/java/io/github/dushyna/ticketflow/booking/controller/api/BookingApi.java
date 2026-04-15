@@ -2,8 +2,11 @@ package io.github.dushyna.ticketflow.booking.controller.api;
 
 import io.github.dushyna.ticketflow.booking.dto.request.BookingCreateDto;
 import io.github.dushyna.ticketflow.booking.dto.response.SeatCoordinateDto;
+import io.github.dushyna.ticketflow.booking.dto.response.BookingResponseDto;
+import io.github.dushyna.ticketflow.user.entity.AppUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,8 +17,12 @@ public interface BookingApi extends BookingApiSwaggerDoc {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    void create(@Valid @RequestBody BookingCreateDto dto);
+    void create(@Valid @RequestBody BookingCreateDto dto, @AuthenticationPrincipal AppUser user);
 
-    @GetMapping("/hall/{hallId}/occupied")
-    List<SeatCoordinateDto> getOccupied(@PathVariable UUID hallId);
+    @GetMapping("/occupied/{showtimeId}")
+    List<SeatCoordinateDto> getOccupied(@PathVariable UUID showtimeId);
+
+    @GetMapping("/my")
+    List<BookingResponseDto> getMyBookings(@AuthenticationPrincipal AppUser user);
+
 }

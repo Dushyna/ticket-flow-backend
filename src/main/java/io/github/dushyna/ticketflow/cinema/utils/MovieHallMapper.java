@@ -12,6 +12,7 @@ import org.mapstruct.*;
 public interface MovieHallMapper {
 
     @Mapping(target = "cinemaId", source = "cinema.id")
+    @Mapping(target = "organizationId", source = "cinema.organization.id")
     MovieHallResponseDto mapEntityToResponseDto(MovieHall entity);
 
     @Mapping(target = "id", ignore = true)

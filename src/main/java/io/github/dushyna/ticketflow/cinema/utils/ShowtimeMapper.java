@@ -10,6 +10,7 @@ import org.mapstruct.*;
 
 public interface ShowtimeMapper {
 
+    @Mapping(target = "hallId", source = "hall.id")
     @Mapping(target = "movieTitle", source = "movie.title")
     @Mapping(target = "hallName", source = "hall.name")
     @Mapping(target = "movieId", source = "movie.id")
