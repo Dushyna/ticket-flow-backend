@@ -4,10 +4,9 @@ import io.github.dushyna.ticketflow.cinema.controller.api.ShowtimeApi;
 import io.github.dushyna.ticketflow.cinema.dto.request.ShowtimeCreateDto;
 import io.github.dushyna.ticketflow.cinema.dto.response.ShowtimeResponseDto;
 import io.github.dushyna.ticketflow.cinema.service.interfaces.ShowtimeService;
-import io.github.dushyna.ticketflow.user.entity.AppUser;
-import io.github.dushyna.ticketflow.user.service.interfaces.UserService;
+import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -18,25 +17,28 @@ import java.util.UUID;
 public class ShowtimeController implements ShowtimeApi {
 
     private final ShowtimeService showtimeService;
-    private final UserService userService;
 
     @Override
-    public ShowtimeResponseDto create(ShowtimeCreateDto dto) {
-        return showtimeService.createShowtime(dto, getCurrentUser());
+    public ShowtimeResponseDto create(ShowtimeCreateDto dto,
+                                      @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return showtimeService.createShowtime(dto, userDetails.user());
     }
 
     @Override
-    public ShowtimeResponseDto update(UUID id, ShowtimeCreateDto dto) {
-        return showtimeService.updateShowtime(id, dto, getCurrentUser());
+    public ShowtimeResponseDto update(UUID id, ShowtimeCreateDto dto,
+                                      @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return showtimeService.updateShowtime(id, dto, userDetails.user());
     }
 
     @Override
-    public void delete(UUID id) {
-        showtimeService.deleteShowtime(id, getCurrentUser());
+    public void delete(UUID id, @AuthenticationPrincipal AuthUserDetails userDetails) {
+        showtimeService.deleteShowtime(id, userDetails.user());
     }
 
     @Override
-    public ShowtimeResponseDto getById(UUID id) {
+    public ShowtimeResponseDto getById(UUID id,
+                                       @AuthenticationPrincipal AuthUserDetails userDetails) {
+        // userDetails може бути null (для публічного доступу)
         return showtimeService.getByIdOrThrow(id);
     }
 
@@ -53,10 +55,5 @@ public class ShowtimeController implements ShowtimeApi {
     @Override
     public List<ShowtimeResponseDto> getByCinema(UUID cinemaId) {
         return showtimeService.getShowtimesByCinema(cinemaId);
-    }
-
-    private AppUser getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userService.getByEmailOrThrow(email);
     }
 }

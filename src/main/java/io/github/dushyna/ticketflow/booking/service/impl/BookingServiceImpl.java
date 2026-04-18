@@ -15,9 +15,9 @@ import io.github.dushyna.ticketflow.cinema.entity.Showtime;
 import io.github.dushyna.ticketflow.cinema.entity.TicketType;
 import io.github.dushyna.ticketflow.cinema.repository.ShowtimeRepository;
 import io.github.dushyna.ticketflow.cinema.repository.TicketTypeRepository;
+import io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
-import io.github.dushyna.ticketflow.user.repository.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.HttpStatus;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,6 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final ShowtimeRepository showtimeRepository;
     private final TicketTypeRepository ticketTypeRepository;
-    private final UserRepository userRepository;
     private final BookingMapper bookingMapper;
     private final ObjectMapper objectMapper;
 
@@ -46,55 +45,35 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void createBookings(BookingCreateDto dto, AppUser currentUser) {
-        String email = SecurityContextHolder
-                .getContext().getAuthentication().getName();
-
-        AppUser managedUser = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + email));
-
         Showtime showtime = showtimeRepository.findById(dto.showtimeId())
                 .orElseThrow(() -> new EntityNotFoundException("Showtime not found"));
 
         MovieHall hall = showtime.getHall();
         Map<String, Object> layout = hall.getLayoutConfig();
 
-        List<List<String>> grid = objectMapper.convertValue(
-                layout.get("grid"),
-                new TypeReference<>() {
-                }
-        );
-
-        List<Map<String, Object>> zoneConfigs = objectMapper.convertValue(
-                layout.get("zoneConfigs"),
-                new TypeReference<>() {
-                }
-        );
+        List<List<String>> grid = objectMapper.convertValue(layout.get("grid"), new TypeReference<>() {});
+        List<Map<String, Object>> zoneConfigs = objectMapper.convertValue(layout.get("zoneConfigs"), new TypeReference<>() {});
 
         for (var seatDto : dto.seats()) {
-            boolean isOccupied = bookingRepository.existsByShowtimeIdAndRowIndexAndColIndexAndStatusIn(
-                    showtime.getId(), seatDto.row(), seatDto.col(), ACTIVE_STATUSES);
-
-            if (isOccupied) {
-                throw new RuntimeException("Seat at Row " + (seatDto.row() + 1) +
-                        " Col " + (seatDto.col() + 1) + " is already taken");
+            if (bookingRepository.existsByShowtimeIdAndRowIndexAndColIndexAndStatusIn(
+                    showtime.getId(), seatDto.row(), seatDto.col(), ACTIVE_STATUSES)) {
+                throw new RestApiException(HttpStatus.CONFLICT, "Seat " + (seatDto.row() + 1) + ":" + (seatDto.col() + 1) + " is already taken");
             }
 
             String seatZoneId = grid.get(seatDto.row()).get(seatDto.col());
             BigDecimal zoneMultiplier = zoneConfigs.stream()
                     .filter(config -> config.get("id").equals(seatZoneId))
-                    .map(config -> {
-                        Object mult = config.get("multiplier");
-                        return mult != null ? new BigDecimal(mult.toString()) : BigDecimal.ONE;
-                    })
+                    .map(config -> new BigDecimal(config.getOrDefault("multiplier", "1").toString()))
                     .findFirst()
                     .orElse(BigDecimal.ONE);
 
             Booking booking = new Booking();
-            booking.setUser(managedUser);
+            booking.setUser(currentUser);
             booking.setShowtime(showtime);
             booking.setHall(hall);
             booking.setRowIndex(seatDto.row());
             booking.setColIndex(seatDto.col());
+            booking.setStatus(BookingStatus.PENDING);
 
             BigDecimal ticketMultiplier = BigDecimal.ONE;
             if (seatDto.ticketTypeId() != null) {
@@ -109,7 +88,6 @@ public class BookingServiceImpl implements BookingService {
                     .multiply(ticketMultiplier);
 
             booking.setFinalPrice(finalPrice);
-            booking.setStatus(BookingStatus.PENDING);
             bookingRepository.save(booking);
         }
     }
@@ -117,11 +95,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public List<BookingResponseDto> getUserBookings(AppUser user) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        AppUser managedUser = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-        return bookingRepository.findAllByUserIdWithDetails(managedUser.getId())
+        return bookingRepository.findAllByUserIdWithDetails(user.getId())
                 .stream()
                 .map(bookingMapper::toResponseDto)
                 .toList();

@@ -9,6 +9,7 @@ import io.github.dushyna.ticketflow.cinema.repository.MovieHallRepository;
 import io.github.dushyna.ticketflow.cinema.service.interfaces.MovieHallService;
 import io.github.dushyna.ticketflow.cinema.utils.MovieHallMapper;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
+import io.github.dushyna.ticketflow.user.entity.Role;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +19,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Service implementation for managing Movie Hall layouts.
- * Now correctly receives currentUser from the controller layer.
- */
 @Service
 @RequiredArgsConstructor
 public class MovieHallServiceImpl implements MovieHallService {
@@ -34,38 +31,34 @@ public class MovieHallServiceImpl implements MovieHallService {
     @Transactional
     public MovieHallResponseDto createHall(MovieHallCreateDto dto, AppUser currentUser) {
         Cinema cinema = cinemaRepository.findById(dto.cinemaId())
-                .orElseThrow(() -> new RuntimeException("Cinema not found with id: " + dto.cinemaId()));
+                .orElseThrow(() -> new EntityNotFoundException("Cinema not found"));
 
         validateAccess(cinema, currentUser);
 
         MovieHall hall = mappingService.mapDtoToEntity(dto);
         hall.setCinema(cinema);
 
-        MovieHall saved = movieHallRepository.save(hall);
-        return mappingService.mapEntityToResponseDto(saved);
+        return mappingService.mapEntityToResponseDto(movieHallRepository.save(hall));
     }
 
     @Override
     @Transactional
     public MovieHallResponseDto updateHall(UUID id, MovieHallCreateDto dto, AppUser currentUser) {
-        MovieHall hall = movieHallRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Hall not found with id: " + id));
-
+        MovieHall hall = findByIdOrThrow(id);
         validateAccess(hall.getCinema(), currentUser);
 
         mappingService.updateEntityFromDto(dto, hall);
-
-        MovieHall saved = movieHallRepository.save(hall);
-        return mappingService.mapEntityToResponseDto(saved);
+        return mappingService.mapEntityToResponseDto(movieHallRepository.save(hall));
     }
 
     @Override
     @Transactional
     public List<MovieHallResponseDto> getAllByCinema(UUID cinemaId, AppUser currentUser) {
-        Cinema cinema = cinemaRepository.findById(cinemaId)
-                .orElseThrow(() -> new RuntimeException("Cinema not found with id: " + cinemaId));
-
-        validateAccess(cinema, currentUser);
+        if (currentUser != null && currentUser.getRole() == Role.ROLE_TENANT_ADMIN) {
+            Cinema cinema = cinemaRepository.findById(cinemaId)
+                    .orElseThrow(() -> new EntityNotFoundException("Cinema not found"));
+            validateAccess(cinema, currentUser);
+        }
 
         return movieHallRepository.findAllByCinemaId(cinemaId).stream()
                 .map(mappingService::mapEntityToResponseDto)
@@ -75,10 +68,11 @@ public class MovieHallServiceImpl implements MovieHallService {
     @Override
     @Transactional
     public MovieHallResponseDto getByIdOrThrow(UUID id, AppUser currentUser) {
-        MovieHall hall = movieHallRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Hall not found with id: " + id));
+        MovieHall hall = findByIdOrThrow(id);
 
-        validateAccess(hall.getCinema(), currentUser);
+        if (currentUser != null && currentUser.getRole() == Role.ROLE_TENANT_ADMIN) {
+            validateAccess(hall.getCinema(), currentUser);
+        }
 
         return mappingService.mapEntityToResponseDto(hall);
     }
@@ -86,15 +80,19 @@ public class MovieHallServiceImpl implements MovieHallService {
     @Override
     @Transactional
     public void deleteHall(UUID id, AppUser currentUser) {
-        MovieHall hall = movieHallRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Hall not found with id: " + id));
-
+        MovieHall hall = findByIdOrThrow(id);
         validateAccess(hall.getCinema(), currentUser);
-
         movieHallRepository.delete(hall);
     }
 
+    private MovieHall findByIdOrThrow(UUID id) {
+        return movieHallRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Hall not found with id: " + id));
+    }
+
     private void validateAccess(Cinema cinema, AppUser user) {
+        if (user.getRole() == io.github.dushyna.ticketflow.user.entity.Role.ROLE_SUPER_ADMIN) return;
+
         if (user.getOrganization() == null ||
                 !cinema.getOrganization().getId().equals(user.getOrganization().getId())) {
             throw new AccessDeniedException("Forbidden: You don't have access to this cinema's halls");

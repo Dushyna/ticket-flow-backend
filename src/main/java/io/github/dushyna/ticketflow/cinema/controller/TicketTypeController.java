@@ -1,50 +1,47 @@
 package io.github.dushyna.ticketflow.cinema.controller;
 
 import io.github.dushyna.ticketflow.cinema.controller.api.TicketTypeApi;
-import io.github.dushyna.ticketflow.cinema.controller.api.TicketTypeSwaggerDoc;
 import io.github.dushyna.ticketflow.cinema.dto.request.TicketTypeRequestDto;
 import io.github.dushyna.ticketflow.cinema.dto.response.TicketTypeResponseDto;
 import io.github.dushyna.ticketflow.cinema.service.interfaces.TicketTypeService;
-import io.github.dushyna.ticketflow.user.entity.AppUser;
+import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/ticket-types")
 @RequiredArgsConstructor
-public class TicketTypeController implements TicketTypeApi, TicketTypeSwaggerDoc {
+public class TicketTypeController implements TicketTypeApi {
 
     private final TicketTypeService ticketTypeService;
 
     @Override
-    public ResponseEntity<TicketTypeResponseDto> create(TicketTypeRequestDto dto, AppUser currentUser) {
-        return new ResponseEntity<>(ticketTypeService.createTicketType(dto, currentUser), HttpStatus.CREATED);
+    public TicketTypeResponseDto create(TicketTypeRequestDto dto,
+                                        @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return ticketTypeService.createTicketType(dto, userDetails.user());
     }
 
     @Override
-    public ResponseEntity<TicketTypeResponseDto> update(UUID id, TicketTypeRequestDto dto, AppUser currentUser) {
-        return ResponseEntity.ok(ticketTypeService.updateTicketType(id, dto, currentUser));
+    public TicketTypeResponseDto update(UUID id, TicketTypeRequestDto dto,
+                                        @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return ticketTypeService.updateTicketType(id, dto, userDetails.user());
     }
 
     @Override
-    public ResponseEntity<List<TicketTypeResponseDto>> getMyTicketTypes(AppUser currentUser) {
-        return ResponseEntity.ok(ticketTypeService.getTicketTypesByOrganization(currentUser));
+    public List<TicketTypeResponseDto> getMyTicketTypes(@AuthenticationPrincipal AuthUserDetails userDetails) {
+        return ticketTypeService.getTicketTypesByOrganization(userDetails.user());
     }
 
     @Override
-    public ResponseEntity<List<TicketTypeResponseDto>> getByOrgId(UUID orgId) {
-        return ResponseEntity.ok(ticketTypeService.getTicketTypesByOrganizationId(orgId));
+    public List<TicketTypeResponseDto> getByOrgId(UUID orgId) {
+        return ticketTypeService.getTicketTypesByOrganizationId(orgId);
     }
 
     @Override
-    public ResponseEntity<Void> delete(UUID id, AppUser currentUser) {
-        ticketTypeService.deleteTicketType(id, currentUser);
-        return ResponseEntity.noContent().build();
+    public void delete(UUID id, @AuthenticationPrincipal AuthUserDetails userDetails) {
+        ticketTypeService.deleteTicketType(id, userDetails.user());
     }
 }

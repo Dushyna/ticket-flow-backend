@@ -2,9 +2,11 @@ package io.github.dushyna.ticketflow.cinema.controller;
 
 import io.github.dushyna.ticketflow.cinema.controller.api.MovieApi;
 import io.github.dushyna.ticketflow.cinema.dto.request.MovieCreateDto;
-import io.github.dushyna.ticketflow.cinema.entity.Movie;
+import io.github.dushyna.ticketflow.cinema.dto.response.MovieResponseDto;
 import io.github.dushyna.ticketflow.cinema.service.interfaces.MovieService;
+import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -17,28 +19,29 @@ public class MovieController implements MovieApi {
     private final MovieService movieService;
 
     @Override
-    public Movie create(MovieCreateDto dto) {
-        return movieService.createMovie(dto);
+    public MovieResponseDto create(MovieCreateDto dto,
+                                   @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return movieService.createMovie(dto, userDetails.user());
     }
 
     @Override
-    public Movie update(UUID id, MovieCreateDto dto) {
-        return movieService.updateMovie(id, dto);
+    public MovieResponseDto update(UUID id, MovieCreateDto dto,
+                        @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return movieService.updateMovie(id, dto, userDetails.user());
     }
 
     @Override
-    public List<Movie> getAll() {
+    public List<MovieResponseDto> getAll(@AuthenticationPrincipal AuthUserDetails userDetails) {
         return movieService.getAllMovies();
     }
 
     @Override
-    public Movie getById(UUID id) {
+    public MovieResponseDto getById(UUID id, @AuthenticationPrincipal AuthUserDetails userDetails) {
         return movieService.getMovieById(id);
     }
 
     @Override
-    public void delete(UUID id) {
-        movieService.deleteMovie(id);
+    public void delete(UUID id, @AuthenticationPrincipal AuthUserDetails userDetails) {
+        movieService.deleteMovie(id, userDetails.user());
     }
-
 }
