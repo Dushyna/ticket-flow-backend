@@ -17,7 +17,7 @@ public interface CinemaService {
     CinemaResponseDto updateCinema(UUID id, CinemaCreateDto dto, AppUser currentUser);
 
 
-    List<CinemaResponseDto> getAllByOrganization(AppUser currentUser);
+    List<CinemaResponseDto> getAllForUser(AppUser currentUser);
 
     CinemaResponseDto getByIdOrThrow(UUID id, AppUser currentUser);
 

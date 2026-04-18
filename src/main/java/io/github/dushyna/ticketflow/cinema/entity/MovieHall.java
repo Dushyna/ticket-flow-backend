@@ -1,7 +1,6 @@
 package io.github.dushyna.ticketflow.cinema.entity;
 
 import io.github.dushyna.ticketflow.common.BaseEntity;
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -10,8 +9,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.util.Map;
 
@@ -39,8 +39,8 @@ public class MovieHall extends BaseEntity {
     @Column(name = "cols_count", nullable = false)
     private Integer colsCount;
 
-    @Type(JsonBinaryType.class)
-    @Column(name = "layout_config", columnDefinition = "jsonb", nullable = false)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "layout_config", nullable = false)
     private Map<String, Object> layoutConfig;
 
     @CreationTimestamp

@@ -28,7 +28,10 @@ spring:
           google:
             client-id: ${CLIENT_ID}
             client-secret: ${CLIENT_SECRET}
-
+            scope:
+              - openid
+              - profile
+              - email
   docker:
     compose:
       enabled: false

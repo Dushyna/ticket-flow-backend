@@ -4,10 +4,9 @@ import io.github.dushyna.ticketflow.cinema.controller.api.CinemaApi;
 import io.github.dushyna.ticketflow.cinema.dto.request.CinemaCreateDto;
 import io.github.dushyna.ticketflow.cinema.dto.response.CinemaResponseDto;
 import io.github.dushyna.ticketflow.cinema.service.interfaces.CinemaService;
-import io.github.dushyna.ticketflow.user.entity.AppUser;
-import io.github.dushyna.ticketflow.user.service.interfaces.UserService;
+import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -18,36 +17,32 @@ import java.util.UUID;
 public class CinemaController implements CinemaApi {
 
     private final CinemaService cinemaService;
-    private final UserService userService;
 
     @Override
-    public CinemaResponseDto create(CinemaCreateDto dto) {
-        return cinemaService.createCinema(dto, getCurrentUser());
-    }
-
-    @Override
-    public CinemaResponseDto update(UUID id, CinemaCreateDto dto) {
-        return cinemaService.updateCinema(id, dto, getCurrentUser());
+    public CinemaResponseDto create(CinemaCreateDto dto,
+                                    @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return cinemaService.createCinema(dto, userDetails.user());
     }
 
     @Override
-    public List<CinemaResponseDto> getAll() {
-        return cinemaService.getAllByOrganization(getCurrentUser());
+    public CinemaResponseDto update(UUID id, CinemaCreateDto dto,
+                                    @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return cinemaService.updateCinema(id, dto, userDetails.user());
     }
 
     @Override
-    public CinemaResponseDto getById(UUID id) {
-        return cinemaService.getByIdOrThrow(id, getCurrentUser());
+    public List<CinemaResponseDto> getAll(@AuthenticationPrincipal AuthUserDetails userDetails) {
+        return cinemaService.getAllForUser(userDetails != null ? userDetails.user() : null);
     }
 
     @Override
-    public void delete(UUID id) {
-        cinemaService.deleteCinema(id, getCurrentUser());
+    public CinemaResponseDto getById(UUID id,
+                                     @AuthenticationPrincipal AuthUserDetails userDetails) {
+        return cinemaService.getByIdOrThrow(id, userDetails != null ? userDetails.user() : null);
     }
 
-    private AppUser getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userService.getByEmailOrThrow(email);
+    @Override
+    public void delete(UUID id, @AuthenticationPrincipal AuthUserDetails userDetails) {
+        cinemaService.deleteCinema(id, userDetails.user());
     }
-
 }

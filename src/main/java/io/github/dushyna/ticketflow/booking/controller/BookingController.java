@@ -5,8 +5,9 @@ import io.github.dushyna.ticketflow.booking.dto.request.BookingCreateDto;
 import io.github.dushyna.ticketflow.booking.dto.response.BookingResponseDto;
 import io.github.dushyna.ticketflow.booking.dto.response.SeatCoordinateDto;
 import io.github.dushyna.ticketflow.booking.service.interfaces.BookingService;
-import io.github.dushyna.ticketflow.user.entity.AppUser;
+import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -19,8 +20,9 @@ public class BookingController implements BookingApi {
     private final BookingService bookingService;
 
     @Override
-    public void create(BookingCreateDto dto, AppUser user) {
-        bookingService.createBookings(dto, user);
+    public void create(BookingCreateDto dto,
+                       @AuthenticationPrincipal AuthUserDetails userDetails) {
+        bookingService.createBookings(dto, userDetails.user());
     }
 
     @Override
@@ -29,8 +31,7 @@ public class BookingController implements BookingApi {
     }
 
     @Override
-    public List<BookingResponseDto> getMyBookings(AppUser user) {
-        return bookingService.getUserBookings(user);
+    public List<BookingResponseDto> getMyBookings(@AuthenticationPrincipal AuthUserDetails userDetails) {
+        return bookingService.getUserBookings(userDetails.user());
     }
-
 }

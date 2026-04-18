@@ -46,6 +46,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         validateHallAccess(hall, currentUser);
 
         Instant startTime = dto.startTime();
+
+        if (startTime.isBefore(Instant.now())) {
+            throw new RestApiException(HttpStatus.BAD_REQUEST, "Cannot schedule a showtime in the past");
+        }
+
         Instant endTime = calculateEndTime(startTime, movie.getDurationMinutes());
 
         validateNoConflicts(hall.getId(), startTime, endTime, null);
@@ -115,6 +120,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
     public List<ShowtimeResponseDto> getShowtimesByCinema(UUID cinemaId) {
         List<Showtime> showtimes = showtimeRepository.findAllByCinemaIdWithDetails(cinemaId);
         System.out.println("DEBUG: Found " + showtimes.size() + " showtimes for cinema " + cinemaId);
@@ -139,6 +146,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
 
     private void validateHallAccess(MovieHall hall, AppUser user) {
+        if (user.getRole() == io.github.dushyna.ticketflow.user.entity.Role.ROLE_SUPER_ADMIN) return;
+
         if (user.getOrganization() == null ||
                 !hall.getCinema().getOrganization().getId().equals(user.getOrganization().getId())) {
             throw new org.springframework.security.access.AccessDeniedException("No access to this hall");

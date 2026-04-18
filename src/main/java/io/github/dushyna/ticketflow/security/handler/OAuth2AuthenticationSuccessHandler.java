@@ -1,9 +1,11 @@
 package io.github.dushyna.ticketflow.security.handler;
 
+import io.github.dushyna.ticketflow.security.service.CookieService;
 import io.github.dushyna.ticketflow.security.service.JwtTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -17,6 +19,10 @@ import java.io.IOException;
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JwtTokenService jwtTokenService;
+    private final CookieService cookieService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -32,9 +38,12 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String accessToken = jwtTokenService.generateAccessToken(email);
         String refreshToken = jwtTokenService.generateRefreshToken(email);
 
-        String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/oauth2/redirect")
-                .queryParam("accessToken", accessToken)
-                .queryParam("refreshToken", refreshToken)
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
+                cookieService.generateAccessTokenCookie(accessToken));
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
+                cookieService.generateRefreshTokenCookie(refreshToken));
+
+        String targetUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
                 .build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
