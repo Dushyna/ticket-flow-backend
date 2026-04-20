@@ -9,11 +9,11 @@ import java.util.UUID;
 
 @Schema(description = "Request to book multiple seats in a movie hall")
 public record BookingCreateDto(
-        @NotNull
+        @NotNull(message = "{booking.showtime.required}")
         @Schema(description = "ID of the specific showtime", example = "550e8400-e29b-41d4-a716-446655440000")
         UUID showtimeId,
 
-        @NotEmpty
+        @NotEmpty(message = "{booking.seats.notEmpty}")
         @Schema(description = "List of coordinates for the selected seats")
         List<@Valid SeatCoordinateRequestDto> seats
 ) {}
