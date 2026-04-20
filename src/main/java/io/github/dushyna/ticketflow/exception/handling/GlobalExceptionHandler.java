@@ -5,8 +5,10 @@ import io.github.dushyna.ticketflow.exception.handling.response.ErrorResponseDto
 import io.github.dushyna.ticketflow.exception.handling.response.ValidationErrorDto;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -27,7 +30,10 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 @Hidden
 @Slf4j
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final MessageSource messageSource;
 
     @ExceptionHandler(RestApiException.class)
     public ResponseEntity<ErrorResponseDto> handleRestApiException(
@@ -35,21 +41,25 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         HttpStatus status = ex.getHttpStatus();
-        String message = ex.getMessage();
-        if (status == HttpStatus.UNAUTHORIZED && "No cookies found!".equals(message)) {
-            message = "Authorization required: token missing";
+        String rawMessage = ex.getMessage();
+
+        if (status == HttpStatus.UNAUTHORIZED && "No cookies found!".equals(rawMessage)) {
+            rawMessage = "auth.unauthorized";
         }
+
+        String translatedMessage = translate(rawMessage);
 
         ErrorResponseDto errorResponse = new ErrorResponseDto(
                 LocalDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
-                message,
+                translatedMessage,
                 List.of(),
                 request.getRequestURI()
         );
-        log.info("RestApi exception caught: {}.", ExceptionUtils.getMessage(ex), ex);
-        return new ResponseEntity<>(errorResponse, ex.getHttpStatus());
+
+        log.info("RestApi exception caught: {}.", rawMessage);
+        return new ResponseEntity<>(errorResponse, status);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -58,9 +68,12 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         Map<String, List<String>> fieldErrorsMap = new HashMap<>();
+
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            String errorMessage = translate(fieldError.getDefaultMessage());
+
             fieldErrorsMap.computeIfAbsent(fieldError.getField(), key -> new ArrayList<>())
-                    .add(fieldError.getDefaultMessage());
+                    .add(errorMessage);
         }
 
         List<ValidationErrorDto> validationErrors = fieldErrorsMap.entrySet().stream()
@@ -71,10 +84,11 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                "Validation failed for one or more fields",
+                translate("validation.failed"),
                 validationErrors,
                 request.getRequestURI()
         );
+
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
@@ -87,15 +101,18 @@ public class GlobalExceptionHandler {
                 ? ex.getRequiredType().getSimpleName()
                 : "unknown";
 
-        String message = String.format("The parameter '%s' has an invalid value: '%s'. Expected type: %s",
-                ex.getName(), ex.getValue(), requiredType);
+        String message = messageSource.getMessage(
+                "error.type_mismatch",
+                new Object[]{ex.getName(), ex.getValue(), requiredType},
+                LocaleContextHolder.getLocale()
+        );
 
         ErrorResponseDto errorResponse = new ErrorResponseDto(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 message,
-                List.of(),
+                null,
                 request.getRequestURI()
         );
 
@@ -109,25 +126,25 @@ public class GlobalExceptionHandler {
             org.springframework.dao.DataIntegrityViolationException ex,
             HttpServletRequest request
     ) {
-        String message = "Database conflict: a record with this value already exists (e.g., email or organization slug).";
+        String rootMsg = (ex.getRootCause() != null) ? ex.getRootCause().getMessage().toLowerCase() : "";
+        String messageKey = "error.conflict.generic";
 
-        if (ex.getRootCause() != null) {
-            String rootMsg = ex.getRootCause().getMessage();
-            if (rootMsg != null && rootMsg.contains("detail")) {
-                message = rootMsg.substring(rootMsg.indexOf("detail") + 7).replace(")", "").replace("(", "");
-            }
+        if (rootMsg.contains("email")) {
+            messageKey = "error.conflict.email";
+        } else if (rootMsg.contains("slug")) {
+            messageKey = "error.conflict.slug";
         }
 
         ErrorResponseDto errorResponse = new ErrorResponseDto(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
-                message,
-                List.of(),
+                translate(messageKey),
+                null,
                 request.getRequestURI()
         );
 
-        log.warn("Data integrity violation: {}", message);
+        log.warn("Data integrity violation: {}", rootMsg);
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 
@@ -139,8 +156,8 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                "An unexpected error occurred. Please contact support.",
-                List.of(),
+                translate("error.internal"),
+                null,
                 request.getRequestURI()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -153,9 +170,9 @@ public class GlobalExceptionHandler {
         ErrorResponseDto error = new ErrorResponseDto(
                 java.time.LocalDateTime.now(),
                 org.springframework.http.HttpStatus.FORBIDDEN.value(),
-                "Forbidden",
-                "Access Denied: You do not have the required permissions.",
-                java.util.Collections.emptyList(),
+                HttpStatus.FORBIDDEN.getReasonPhrase(),
+                translate("auth.forbidden"),
+                null,
                 request.getRequestURI()
         );
 
@@ -164,14 +181,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponseDto> handleUsernameNotFound(UsernameNotFoundException ex, HttpServletRequest request) {
+        String message = translate("user.not_found");
         ErrorResponseDto error = new ErrorResponseDto(
                 LocalDateTime.now(),
                 HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
-                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                message,
                 null,
                 request.getRequestURI()
         );
+        log.warn("Login failed: {}", ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
@@ -180,15 +199,39 @@ public class GlobalExceptionHandler {
         log.warn("Access denied: {}", ex.getMessage());
 
         ErrorResponseDto error = new ErrorResponseDto(
-                LocalDateTime.now(),            // 1. timestamp
-                HttpStatus.FORBIDDEN.value(),   // 2. status
-                "Forbidden",                    // 3. error
-                ex.getMessage(),                // 4. message
-                Collections.emptyList(),        // 5. errors
-                request.getRequestURI()         // 6. path
+                LocalDateTime.now(),
+                HttpStatus.FORBIDDEN.value(),
+                HttpStatus.FORBIDDEN.getReasonPhrase(),
+                translate("auth.forbidden"),
+                null,
+                request.getRequestURI()
         );
 
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponseDto> handleResponseStatusException(ResponseStatusException ex, HttpServletRequest request) {
+        String translatedMessage = translate(ex.getReason());
+        ErrorResponseDto error = new ErrorResponseDto(
+                LocalDateTime.now(),
+                ex.getStatusCode().value(),
+                HttpStatus.valueOf(ex.getStatusCode().value()).getReasonPhrase(),
+                translatedMessage,
+                null,
+                request.getRequestURI()
+
+        );
+        return new ResponseEntity<>(error, ex.getStatusCode());
+    }
+
+    private String translate(String messageKey) {
+        if (messageKey == null) return "";
+        try {
+            return messageSource.getMessage(messageKey, null, LocaleContextHolder.getLocale());
+        } catch (Exception e) {
+            return messageKey;
+        }
     }
 
 //    *

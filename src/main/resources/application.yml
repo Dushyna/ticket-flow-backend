@@ -36,6 +36,10 @@ spring:
     compose:
       enabled: false
 
+  messages:
+    basename: messages/messages
+    encoding: UTF-8
+
   mail:
     host: ${EMAIL_HOST:smtp.gmail.com}
     port: 587
