@@ -1,0 +1,35 @@
+spring:
+  datasource:
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    url: jdbc:tc:postgresql:16-alpine:///ticketflow
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  mail:
+    host: localhost
+    port: 587
+    username: test-user
+    password: test-password
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-id
+            client-secret: test-secret
+  flyway:
+    enabled: false
+
+jwt:
+  at:
+    secret: 9afafc2db1b8446773a67734a687352225a677a28352a7a22332a677322a223a
+    live-in-min: 15
+  rt:
+    secret: 8bbfd2db1b8446773a67734a687352225a677a28352a7a22332a677322a223b
+    live-in-min: 10080
+
+confirmation:
+  expiration:
+    days: 2

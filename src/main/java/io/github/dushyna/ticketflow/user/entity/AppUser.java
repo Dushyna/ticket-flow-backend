@@ -68,6 +68,14 @@ public class AppUser extends BaseEntity {
     @JoinColumn(name = "organization_id")
     private Organization organization;
 
+    @Column(name = "locked", nullable = false)
+    private boolean locked = false;
+
+    @Column(name = "failed_attempts")
+    @ColumnDefault("0")
+    private int failedAttempts = 0;
+
+
     public AppUser(String password, String email) {
         this.password = password;
         this.email = email;
@@ -83,6 +91,8 @@ public class AppUser extends BaseEntity {
         this.providerId = providerId;
         this.role = Role.ROLE_USER;
         this.confirmationStatus = ConfirmationStatus.CONFIRMED;
+        this.locked = false;
+        this.failedAttempts = 0;
     }
 
     @Override

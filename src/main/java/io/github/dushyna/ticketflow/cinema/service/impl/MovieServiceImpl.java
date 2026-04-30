@@ -57,6 +57,7 @@ public class MovieServiceImpl implements MovieService {
                 .toList();
     }
 
+
     @Override
     @Transactional(readOnly = true)
     public MovieResponseDto getMovieById(UUID id) {

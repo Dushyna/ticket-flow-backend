@@ -37,6 +37,10 @@ public class AuthService {
 
     public void login(LoginRequest loginRequest, HttpServletResponse response) {
         String userEmail = loginRequest.email();
+
+        AppUser user = userRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new RestApiException(HttpStatus.UNAUTHORIZED, "Invalid username or password."));
+
         UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
         Authentication authentication;
@@ -44,20 +48,27 @@ public class AuthService {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userDetails, loginRequest.password())
             );
+
+            if (user.getFailedAttempts() > 0) {
+                user.setFailedAttempts(0);
+                userRepository.save(user);
+            }
+
         } catch (DisabledException ex) {
-            log.warn("Login attempt for inactive account: {}", userEmail, ex);
+            log.warn("Login attempt for inactive account: {}", userEmail);
             throw new RestApiException(
                     HttpStatus.FORBIDDEN,
                     "User account is not active. Please confirm your email."
             );
         } catch (LockedException ex) {
-            log.warn("Login attempt for locked account: {}", userEmail, ex);
+            log.warn("Login attempt for locked account: {}", userEmail);
             throw new RestApiException(
                     HttpStatus.FORBIDDEN,
                     "User account is locked."
             );
         } catch (BadCredentialsException ex) {
-            log.warn("Bad credentials for user: {}", userEmail, ex);
+            handleFailedLogin(user);
+            log.warn("Bad credentials for user: {}", userEmail);
             throw new RestApiException(
                     HttpStatus.UNAUTHORIZED,
                     "Invalid username or password."
@@ -110,9 +121,26 @@ public class AuthService {
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = resetTokenRepository.findByToken(token)
                 .orElseThrow(() -> new RestApiException(HttpStatus.BAD_REQUEST, "Invalid reset token"));
+
         AppUser user = resetToken.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
+
+        user.setLocked(false);
+        user.setFailedAttempts(0);
+
         userRepository.save(user);
         resetTokenRepository.delete(resetToken);
+    }
+
+
+    private void handleFailedLogin(AppUser user) {
+        int newAttempts = user.getFailedAttempts() + 1;
+        user.setFailedAttempts(newAttempts);
+
+        if (newAttempts >= 5) {
+            user.setLocked(true);
+            log.info("User {} has been locked due to 5 failed login attempts", user.getEmail());
+        }
+        userRepository.save(user);
     }
 }

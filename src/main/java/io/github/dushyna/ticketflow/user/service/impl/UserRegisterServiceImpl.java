@@ -45,6 +45,13 @@ public class UserRegisterServiceImpl implements UserRegisterService {
     @Override
     @Transactional
     public UserCreateResponseDto registerTenant(final TenantRegistrationDto dto) {
+        if (organizationRepository.existsBySlug(dto.organization().slug())) {
+            throw new io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Organization with this slug already exists"
+            );
+        }
+
         Organization org = Organization.builder()
                 .name(dto.organization().name())
                 .slug(dto.organization().slug())

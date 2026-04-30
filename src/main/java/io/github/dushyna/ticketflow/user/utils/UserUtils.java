@@ -21,7 +21,7 @@ public class UserUtils {
         if (name == null || name.isBlank()) return null;
         name = name.trim();
         if (name.length() == 1) return name.toUpperCase();
-        return name.substring(0, 1).toUpperCase() + name.substring(1);
+        return name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
     }
 
     public static String emptyFieldToNull(String value) {

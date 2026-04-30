@@ -31,13 +31,21 @@ public record AuthUserDetails(AppUser user) implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        var confirmationStatus = user.getConfirmationStatus();
-        return !ConfirmationStatus.BANNED.equals(confirmationStatus);
+        return !user.isLocked();
     }
 
     @Override
     public boolean isEnabled() {
-        var confirmationStatus = user.getConfirmationStatus();
-        return ConfirmationStatus.CONFIRMED.equals(confirmationStatus);
+        return ConfirmationStatus.CONFIRMED.equals(user.getConfirmationStatus());
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
     }
 }
