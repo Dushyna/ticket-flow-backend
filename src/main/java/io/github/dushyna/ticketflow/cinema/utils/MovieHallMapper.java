@@ -19,11 +19,15 @@ public interface MovieHallMapper {
     @Mapping(target = "cinema", ignore = true)
     @Mapping(target = "rowsCount", source = "rows")
     @Mapping(target = "colsCount", source = "cols")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     MovieHall mapDtoToEntity(MovieHallCreateDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "cinema", ignore = true)
     @Mapping(target = "rowsCount", source = "rows")
     @Mapping(target = "colsCount", source = "cols")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromDto(MovieHallCreateDto dto, @MappingTarget MovieHall entity);
 }
