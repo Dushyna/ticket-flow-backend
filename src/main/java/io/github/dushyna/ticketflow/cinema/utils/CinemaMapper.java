@@ -19,10 +19,14 @@ public interface CinemaMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "halls", ignore = true)
     @Mapping(target = "organization", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     Cinema mapDtoToEntity(CinemaCreateDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "halls", ignore = true)
     @Mapping(target = "organization", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromDto(CinemaCreateDto dto, @MappingTarget Cinema entity);
 }

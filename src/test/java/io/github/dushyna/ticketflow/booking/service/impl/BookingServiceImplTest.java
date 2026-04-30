@@ -16,9 +16,9 @@ import io.github.dushyna.ticketflow.cinema.entity.Showtime;
 import io.github.dushyna.ticketflow.cinema.entity.TicketType;
 import io.github.dushyna.ticketflow.cinema.repository.ShowtimeRepository;
 import io.github.dushyna.ticketflow.cinema.repository.TicketTypeRepository;
+import io.github.dushyna.ticketflow.common.service.TranslationService;
 import io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +31,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +48,7 @@ class BookingServiceImplTest {
     @Mock private ShowtimeRepository showtimeRepository;
     @Mock private TicketTypeRepository ticketTypeRepository;
     @Mock private BookingMapper bookingMapper;
+    @Mock private TranslationService translationService;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
@@ -72,9 +75,13 @@ class BookingServiceImplTest {
         hall.setLayoutConfig(layout);
 
         showtime = new Showtime();
+        showtime.setStartTime(Instant.now().plus(Duration.ofDays(1)));
         showtime.setHall(hall);
         showtime.setBasePrice(new BigDecimal("100.00"));
         ReflectionTestUtils.setField(showtime, "id", showtimeId);
+
+        lenient().when(translationService.get(anyString())).thenReturn("Some message");
+        lenient().when(translationService.get(anyString(), any())).thenReturn("Some message with args");
     }
 
     @Test
@@ -86,10 +93,11 @@ class BookingServiceImplTest {
         var createDto = new BookingCreateDto(showtimeId, List.of(seatDto));
 
         TicketType tt = new TicketType();
-        tt.setDiscount(new BigDecimal("0.8")); // 20% discount
+        tt.setDiscount(new BigDecimal("0.8"));
 
         given(showtimeRepository.findById(showtimeId)).willReturn(Optional.of(showtime));
         given(ticketTypeRepository.findById(ticketTypeId)).willReturn(Optional.of(tt));
+
         given(bookingRepository.existsByShowtimeIdAndRowIndexAndColIndexAndStatusIn(any(), anyInt(), anyInt(), any()))
                 .willReturn(false);
 
@@ -97,7 +105,6 @@ class BookingServiceImplTest {
         bookingService.createBookings(createDto, user);
 
         // Then
-        // Price: 100.00 * 1.5 (zone) * 0.8 (ticket) = 120.00
         verify(bookingRepository).save(argThat(b ->
                 b.getFinalPrice().compareTo(new BigDecimal("120.00")) == 0 &&
                         b.getStatus() == BookingStatus.PENDING
@@ -116,9 +123,12 @@ class BookingServiceImplTest {
 
         // When & Then
         assertThatThrownBy(() -> bookingService.createBookings(dto, user))
-                .isInstanceOf(EntityNotFoundException.class) // ТУТ використовується імпорт!
-                .hasMessage("Showtime not found");
-    }
+                .isInstanceOf(RestApiException.class)
+                .satisfies(ex -> {
+                    RestApiException apiEx = (RestApiException) ex;
+                    assertThat(apiEx.getHttpStatus()).isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
+                    assertThat(apiEx.getMessage()).isEqualTo("Some message");
+                });    }
 
     @Test
     @SuppressWarnings("unchecked")
@@ -128,14 +138,15 @@ class BookingServiceImplTest {
         var seatDto = new SeatCoordinateRequestDto(0, 0, null);
         var createDto = new BookingCreateDto(showtimeId, List.of(seatDto));
 
+        showtime.setStartTime(Instant.now().plus(Duration.ofDays(1)));
         given(showtimeRepository.findById(showtimeId)).willReturn(Optional.of(showtime));
 
         // When
         bookingService.createBookings(createDto, user);
 
         // Then
-        // Перевіряємо, що сервіс реально звертався до objectMapper для конвертації JSON
-        verify(objectMapper, atLeastOnce()).convertValue(any(), any(TypeReference.class));    }
+        verify(objectMapper, atLeastOnce()).convertValue(any(), any(TypeReference.class));
+    }
 
     @Test
     @DisplayName("createBookings: Failure - Seat already taken")
@@ -144,7 +155,12 @@ class BookingServiceImplTest {
         var seatDto = new SeatCoordinateRequestDto(0, 0, null);
         var createDto = new BookingCreateDto(showtimeId, List.of(seatDto));
 
+        showtime.setStartTime(Instant.now().plus(Duration.ofDays(1)));
         given(showtimeRepository.findById(showtimeId)).willReturn(Optional.of(showtime));
+
+        given(translationService.get(eq("booking.seat.taken"), any(), any()))
+                .willReturn("Seat 1:1 is already taken");
+
         given(bookingRepository.existsByShowtimeIdAndRowIndexAndColIndexAndStatusIn(any(), anyInt(), anyInt(), any()))
                 .willReturn(true);
 
