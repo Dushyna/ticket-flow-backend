@@ -1,5 +1,6 @@
 package io.github.dushyna.ticketflow.cinema.service.impl;
 
+import io.github.dushyna.ticketflow.base.BaseIT;
 import io.github.dushyna.ticketflow.cinema.dto.request.ShowtimeCreateDto;
 import io.github.dushyna.ticketflow.cinema.dto.response.ShowtimeResponseDto;
 import io.github.dushyna.ticketflow.cinema.entity.Cinema;
@@ -49,7 +50,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 )
 @ActiveProfiles("test")
 @Transactional // Rolls back DB changes after each test
-class ShowtimeIntegrationTest {
+class ShowtimeIntegrationTest extends BaseIT {
 
     @Autowired private ShowtimeServiceImpl showtimeService;
     @Autowired private ShowtimeRepository showtimeRepository;
