@@ -7,6 +7,6 @@ public interface Constants {
     /**
      * Constants for Cookies names
      */
-    String ACCESS_TOKEN_COOKIE = "Access-Token";
-    String REFRESH_TOKEN_COOKIE = "Refresh-Token";
+    String ACCESS_TOKEN_COOKIE = "access_token";
+    String REFRESH_TOKEN_COOKIE = "refresh_token";
 }
