@@ -27,4 +27,5 @@ jobs:
           EMAIL_PASSWORD: fake-password
           JWT_AT_SECRET: V2VyeWRvbmdTZWNyZXRLZXlGb3JBY2Nlc3NUb2tlbjMyQnl0ZXN0cm9uZw==
           JWT_RT_SECRET: V2VyeWRvbmdTZWNyZXRLZXlGb3JSZWZyZXNoVG9rZW4zMkJ5dGVzdHJvbmc=
+          TESTCONTAINERS_RYUK_DISABLED: true
         run: chmod +x gradlew && ./gradlew build

@@ -1,5 +1,6 @@
 package io.github.dushyna.ticketflow.booking.service.impl;
 
+import io.github.dushyna.ticketflow.base.BaseIT;
 import io.github.dushyna.ticketflow.booking.dto.request.BookingCreateDto;
 import io.github.dushyna.ticketflow.booking.dto.request.SeatCoordinateRequestDto;
 import io.github.dushyna.ticketflow.booking.entity.Booking;
@@ -44,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 )
 @ActiveProfiles("test")
 @Transactional
-class BookingIntegrationTest {
+class BookingIntegrationTest extends BaseIT {
 
     @Autowired private BookingServiceImpl bookingService;
     @Autowired private BookingRepository bookingRepository;

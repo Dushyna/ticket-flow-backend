@@ -9,7 +9,6 @@ import io.github.dushyna.ticketflow.security.dto.request.ForgotPasswordRequestDt
 import io.github.dushyna.ticketflow.security.dto.request.ResetPasswordRequestDto;
 import io.github.dushyna.ticketflow.security.entities.PasswordResetToken;
 import io.github.dushyna.ticketflow.security.repository.PasswordResetTokenRepository;
-import io.github.dushyna.ticketflow.security.service.CustomOAuth2UserService;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
 import io.github.dushyna.ticketflow.user.entity.ConfirmationStatus;
 import io.github.dushyna.ticketflow.user.entity.Role;
@@ -67,9 +66,6 @@ class AuthIntegrationTest extends BaseIT {
     @Autowired
     private PasswordResetTokenRepository tokenRepository;
 
-    @Autowired
-    private CustomOAuth2UserService customOAuth2UserService;
-
     @MockitoBean private S3Client s3Client;
     @MockitoBean private S3AsyncClient s3AsyncClient;
     @MockitoBean private JavaMailSender javaMailSender;
@@ -96,10 +92,16 @@ class AuthIntegrationTest extends BaseIT {
     void login_Success() {
         LoginRequest loginRequest = new LoginRequest("realuser@test.com", "password123");
 
-        ResponseEntity<Void> response = restTemplate.postForEntity("/api/v1/auth/login", loginRequest, Void.class);
-
+        HttpHeaders headers = getHeadersWithCsrf();
+        HttpEntity<LoginRequest> entity = new HttpEntity<>(loginRequest, headers);
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/v1/auth/login",
+                org.springframework.http.HttpMethod.POST,
+                entity,
+                Void.class
+        );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getHeaders().get("Set-Cookie")).isNotEmpty();
+        assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE)).isNotEmpty();
     }
 
     @Test
@@ -108,10 +110,14 @@ class AuthIntegrationTest extends BaseIT {
         // Given
         LoginRequest loginRequest = new LoginRequest("realuser@test.com", "wrong_password");
 
-        // When
-        ResponseEntity<ErrorResponseDto> response = restTemplate.postForEntity(
+        // Prepare headers with CSRF to avoid 403 Forbidden
+        HttpEntity<LoginRequest> entity = new HttpEntity<>(loginRequest, getHeadersWithCsrf());
+
+        // When: Use exchange to include headers and handle ErrorResponseDto mapping
+        ResponseEntity<ErrorResponseDto> response = restTemplate.exchange(
                 "/api/v1/auth/login",
-                loginRequest,
+                org.springframework.http.HttpMethod.POST,
+                entity,
                 ErrorResponseDto.class
         );
 
@@ -123,6 +129,8 @@ class AuthIntegrationTest extends BaseIT {
         assertThat(body.status()).isEqualTo(401);
         assertThat(body.error()).isEqualTo("Unauthorized");
         assertThat(body.message()).isEqualTo("Invalid username or password.");
+
+        // timestamp mapping will now work correctly thanks to JavaTimeModule in BaseIT
         assertThat(body.timestamp()).isBeforeOrEqualTo(LocalDateTime.now());
     }
 
@@ -136,9 +144,15 @@ class AuthIntegrationTest extends BaseIT {
 
         LoginRequest loginRequest = new LoginRequest("realuser@test.com", "password123");
 
-        // When
-        ResponseEntity<ErrorResponseDto> response = restTemplate.postForEntity(
-                "/api/v1/auth/login", loginRequest, ErrorResponseDto.class
+        // Prepare headers with CSRF to prevent 403 before logic execution
+        HttpEntity<LoginRequest> entity = new HttpEntity<>(loginRequest, getHeadersWithCsrf());
+
+        // When: Use exchange to ensure proper CSRF handling and ErrorResponseDto mapping
+        ResponseEntity<ErrorResponseDto> response = restTemplate.exchange(
+                "/api/v1/auth/login",
+                org.springframework.http.HttpMethod.POST,
+                entity,
+                ErrorResponseDto.class
         );
 
         // Then
@@ -148,7 +162,6 @@ class AuthIntegrationTest extends BaseIT {
                 .extracting(ErrorResponseDto::message)
                 .asString()
                 .isNotBlank();
-
     }
 
     @Test
@@ -161,10 +174,14 @@ class AuthIntegrationTest extends BaseIT {
 
         LoginRequest loginRequest = new LoginRequest("realuser@test.com", "password123");
 
-        // 2. When -
-        ResponseEntity<ErrorResponseDto> response = restTemplate.postForEntity(
+        // Prepare entity with CSRF headers to pass security filters
+        HttpEntity<LoginRequest> entity = new HttpEntity<>(loginRequest, getHeadersWithCsrf());
+
+        // 2. When - Using exchange for proper ErrorResponseDto deserialization
+        ResponseEntity<ErrorResponseDto> response = restTemplate.exchange(
                 "/api/v1/auth/login",
-                loginRequest,
+                org.springframework.http.HttpMethod.POST,
+                entity,
                 ErrorResponseDto.class
         );
 
@@ -187,10 +204,14 @@ class AuthIntegrationTest extends BaseIT {
         String email = "realuser@test.com";
         ForgotPasswordRequestDto request = new ForgotPasswordRequestDto(email);
 
-        // 2. When
-        ResponseEntity<Void> response = restTemplate.postForEntity(
+        // Prepare entity with CSRF headers to pass security filters
+        HttpEntity<ForgotPasswordRequestDto> entity = new HttpEntity<>(request, getHeadersWithCsrf());
+
+        // 2. When - Use exchange to include CSRF headers for POST request
+        ResponseEntity<Void> response = restTemplate.exchange(
                 "/api/v1/auth/forgot-password",
-                request,
+                org.springframework.http.HttpMethod.POST,
+                entity,
                 Void.class
         );
 
@@ -202,6 +223,7 @@ class AuthIntegrationTest extends BaseIT {
         assertThat(tokens.getFirst().getUser().getEmail()).isEqualTo(email);
         assertThat(tokens.getFirst().getToken()).isNotBlank();
 
+        // Verify that the email service was triggered
         verify(emailService, atLeastOnce()).sendResetPasswordEmail(eq(email), anyString());
     }
 
@@ -212,8 +234,16 @@ class AuthIntegrationTest extends BaseIT {
         // Given
         ForgotPasswordRequestDto request = new ForgotPasswordRequestDto("nonexistent@test.com");
 
-        // When
-        ResponseEntity<Void> response = restTemplate.postForEntity("/api/v1/auth/forgot-password", request, Void.class);
+        // Prepare entity with CSRF headers
+        HttpEntity<ForgotPasswordRequestDto> entity = new HttpEntity<>(request, getHeadersWithCsrf());
+
+        // When: Using exchange to include headers for the POST request
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/v1/auth/forgot-password",
+                org.springframework.http.HttpMethod.POST,
+                entity,
+                Void.class
+        );
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -239,10 +269,14 @@ class AuthIntegrationTest extends BaseIT {
         String newPassword = "brandNewPassword2024";
         ResetPasswordRequestDto request = new ResetPasswordRequestDto(resetTokenValue, newPassword);
 
-        // 2. When
-        ResponseEntity<Void> response = restTemplate.postForEntity(
+        // Prepare headers with CSRF to avoid 403 Forbidden
+        HttpEntity<ResetPasswordRequestDto> entity = new HttpEntity<>(request, getHeadersWithCsrf());
+
+        // 2. When - Use exchange to include CSRF headers for POST request
+        ResponseEntity<Void> response = restTemplate.exchange(
                 "/api/v1/auth/reset-password",
-                request,
+                org.springframework.http.HttpMethod.POST,
+                entity,
                 Void.class
         );
 
@@ -263,10 +297,14 @@ class AuthIntegrationTest extends BaseIT {
         // Given
         ResetPasswordRequestDto request = new ResetPasswordRequestDto("fake-token", "newPassword123");
 
-        // When
-        ResponseEntity<ErrorResponseDto> response = restTemplate.postForEntity(
+        // Prepare entity with CSRF headers to pass security filters
+        HttpEntity<ResetPasswordRequestDto> entity = new HttpEntity<>(request, getHeadersWithCsrf());
+
+        // When: Use exchange for proper CSRF handling and ErrorResponseDto mapping
+        ResponseEntity<ErrorResponseDto> response = restTemplate.exchange(
                 "/api/v1/auth/reset-password",
-                request,
+                org.springframework.http.HttpMethod.POST,
+                entity,
                 ErrorResponseDto.class
         );
 
@@ -283,54 +321,73 @@ class AuthIntegrationTest extends BaseIT {
     @Test
     @DisplayName("Integration Refresh: Should return new Access Token when Refresh Cookie is valid")
     void refresh_ShouldReturnNewAccessToken_WhenTokenIsValid() {
-        // 1. Given - Login
+        // 1. Given - Login (using exchange + CSRF)
         LoginRequest loginRequest = new LoginRequest("realuser@test.com", "password123");
-        ResponseEntity<Void> loginResponse = restTemplate.postForEntity("/api/v1/auth/login", loginRequest, Void.class);
+        HttpEntity<LoginRequest> loginEntity = new HttpEntity<>(loginRequest, getHeadersWithCsrf());
 
-        List<String> setCookieHeaders = loginResponse.getHeaders().get(org.springframework.http.HttpHeaders.SET_COOKIE);
+        ResponseEntity<Void> loginResponse = restTemplate.exchange(
+                "/api/v1/auth/login",
+                org.springframework.http.HttpMethod.POST,
+                loginEntity,
+                Void.class
+        );
+
+        List<String> setCookieHeaders = loginResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
         assertThat(setCookieHeaders).isNotNull();
 
+        // Extract Refresh Cookie
         String refreshCookieRaw = setCookieHeaders.stream()
                 .filter(header -> header.toLowerCase().contains(Constants.REFRESH_TOKEN_COOKIE.toLowerCase()))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Refresh-Token not found in: " + setCookieHeaders));
+                .orElseThrow(() -> new AssertionError("Refresh-Token not found"));
 
-        String cleanCookie = refreshCookieRaw.split(";")[0];
+        String cleanRefreshCookie = refreshCookieRaw.split(";")[0];
 
-        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-        headers.add(org.springframework.http.HttpHeaders.COOKIE, cleanCookie);
-        org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
+        // 2. Prepare request with BOTH CSRF and Refresh Cookie
+        HttpHeaders refreshHeaders = getHeadersWithCsrf();
+        refreshHeaders.add(HttpHeaders.COOKIE, cleanRefreshCookie);
+        HttpEntity<Void> refreshEntity = new HttpEntity<>(refreshHeaders);
 
-        // 2. When
-        ResponseEntity<Void> response = restTemplate.postForEntity("/api/v1/auth/refresh-token", entity, Void.class);
+        // 3. When
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/v1/auth/refresh-token",
+                org.springframework.http.HttpMethod.POST,
+                refreshEntity,
+                Void.class
+        );
 
-        // 3. Then
-        assertThat(response.getStatusCode()).isEqualTo(org.springframework.http.HttpStatus.OK);
+        // 4. Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        List<String> refreshResultCookies = response.getHeaders().get(org.springframework.http.HttpHeaders.SET_COOKIE);
-
+        List<String> refreshResultCookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
         assertThat(refreshResultCookies)
-                .withFailMessage("New Access-Token not found in response: " + refreshResultCookies)
+                .withFailMessage("New Access-Token not found in response")
                 .anyMatch(c -> c.toLowerCase().contains(Constants.ACCESS_TOKEN_COOKIE.toLowerCase()));
     }
 
     @Test
     @DisplayName("Integration Refresh Error: Should return 401 when Refresh Cookie is invalid")
     void refresh_ShouldReturn401_WhenTokenIsInvalid() {
-        // 1. Given
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.COOKIE, "refreshToken=fake-expired-token");
+        // 1. Given: Prepare headers with CSRF and add a fake/invalid refresh cookie
+        HttpHeaders headers = getHeadersWithCsrf();
+        headers.add(HttpHeaders.COOKIE, Constants.REFRESH_TOKEN_COOKIE + "=fake-expired-token");
+
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        // 2. When
-        ResponseEntity<ErrorResponseDto> response = restTemplate.postForEntity(
+        // 2. When: Use exchange to handle CSRF and ErrorResponseDto mapping
+        ResponseEntity<ErrorResponseDto> response = restTemplate.exchange(
                 "/api/v1/auth/refresh-token",
+                org.springframework.http.HttpMethod.POST,
                 entity,
                 ErrorResponseDto.class
         );
 
         // 3. Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        // ErrorResponseDto timestamp will be correctly parsed thanks to BaseIT config
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(401);
     }
 
     @Test

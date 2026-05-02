@@ -234,36 +234,43 @@ public class GlobalExceptionHandler {
         }
     }
 
-//    *
-//     * Delegate any AuthenticationException (401 Unauthorized)
-//     * to the RestAuthenticationEntryPoint, so it renders your JSON.
-//
-//    @ExceptionHandler(AuthenticationException.class)
-//    public void handleAuthenticationException(
-//            AuthenticationException ex,
-//            HttpServletRequest request,
-//            HttpServletResponse response
-//    ) throws IOException {
-//        log.warn("Authentication failure: {}", ex.getMessage());
-//        new RestAuthenticationEntryPoint().commence(request, response, ex);
-//    }
-//
-//    *
-//     * Delegate any AccessDeniedException (403 Forbidden)
-//     * to the CustomAccessDeniedHandler.
-//
-//    @ExceptionHandler(AccessDeniedException.class)
-//    public void handleAccessDeniedException(
-//            AccessDeniedException ex,
-//            HttpServletRequest request,
-//            HttpServletResponse response
-//    ) throws IOException {
-//        log.warn("Access denied: {}", ex.getMessage());
-//        new CustomAccessDeniedHandler().handle(request, response, ex);
-//    }
-//
-//    *
-//     * Fallback for any other exceptions.
-//     * Logs the error and returns 500 with a generic message.
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadableException(
+            org.springframework.http.converter.HttpMessageNotReadableException ex,
+            HttpServletRequest request) {
+
+        log.warn("Payload deserialization failed: {}", ex.getMessage());
+
+        ErrorResponseDto errorResponse = new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                translate("error.malformed_json"), // Додай цей ключ у messages
+                null,
+                request.getRequestURI()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(jakarta.persistence.EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleEntityNotFound(
+            jakarta.persistence.EntityNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        log.warn("Entity not found: {}", ex.getMessage());
+
+        ErrorResponseDto errorResponse = new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ex.getMessage(), // Or translate("error.not_found")
+                null,
+                request.getRequestURI()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
 
 }

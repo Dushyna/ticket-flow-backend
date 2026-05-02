@@ -1,5 +1,6 @@
 package io.github.dushyna.ticketflow.security.config;
 
+import io.github.dushyna.ticketflow.security.filter.CsrfCookieFilter;
 import io.github.dushyna.ticketflow.security.filter.JwtTokenFilter;
 import io.github.dushyna.ticketflow.security.handler.CustomAccessDeniedHandler;
 import io.github.dushyna.ticketflow.security.handler.OAuth2AuthenticationSuccessHandler;
@@ -16,11 +17,12 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -70,7 +72,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
@@ -86,6 +91,12 @@ public class SecurityConfig {
                        .requestMatchers("/api/v1/auth/**").permitAll()
 
                         .requestMatchers("/api/v1/attachments/download/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/cinemas/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/movies/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/halls/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/showtimes/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/ticket-types/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/bookings/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -98,6 +109,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new RestAuthenticationEntryPoint())
                         .accessDeniedHandler(new CustomAccessDeniedHandler())
                 )
+                .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
