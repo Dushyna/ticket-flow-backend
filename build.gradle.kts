@@ -35,6 +35,8 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    testImplementation("com.h2database:h2")
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
     implementation("org.mapstruct:mapstruct:1.5.5.Final")

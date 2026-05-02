@@ -1,6 +1,7 @@
 package io.github.dushyna.ticketflow.security.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.dushyna.ticketflow.base.BaseIT;
 import io.github.dushyna.ticketflow.security.dto.LoginRequest;
 import io.github.dushyna.ticketflow.security.dto.request.ForgotPasswordRequestDto;
 import io.github.dushyna.ticketflow.security.dto.request.ResetPasswordRequestDto;
@@ -32,10 +33,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class AuthControllerTest {
+class AuthControllerTest  {
 
     @Autowired
     private MockMvc mockMvc;

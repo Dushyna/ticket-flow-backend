@@ -35,7 +35,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.mockito.ArgumentMatchers.eq;
 
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ShowtimeControllerTest {
