@@ -45,6 +45,7 @@ public class SecurityConfig {
     /**
      * Filter for checking User's tokens
      */
+    private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final JwtTokenFilter jwtTokenFilter;
     private final CustomUserDetailsService userDetailsService;
     private final CustomOAuth2UserService oauth2UserService;
@@ -73,6 +74,9 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/api/v1/payments/webhook",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh-token")
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                 )
@@ -98,6 +102,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/v1/ticket-types/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/bookings/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/v1/payments/webhook").permitAll()
+                        .requestMatchers("/api/v1/auth/refresh-token").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
@@ -106,7 +112,7 @@ public class SecurityConfig {
                         .loginPage("/api/v1/auth/login")
                 )
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(new RestAuthenticationEntryPoint())
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
                         .accessDeniedHandler(new CustomAccessDeniedHandler())
                 )
                 .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)

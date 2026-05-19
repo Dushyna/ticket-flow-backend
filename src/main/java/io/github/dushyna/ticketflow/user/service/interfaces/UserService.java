@@ -1,6 +1,7 @@
 package io.github.dushyna.ticketflow.user.service.interfaces;
 
 import io.github.dushyna.ticketflow.user.dto.request.UpdateUserDetailsDto;
+import io.github.dushyna.ticketflow.user.dto.request.UserRoleUpdateRequestDto;
 import io.github.dushyna.ticketflow.user.dto.response.UserResponseDto;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
 
@@ -34,4 +35,10 @@ public interface UserService {
      * @param currentUser the target user entity
      */
     UserResponseDto updateUserDetails(UpdateUserDetailsDto dto, AppUser currentUser);
+
+    Optional<AppUser> findByEmailWithOrganization(String email);
+
+    List<UserResponseDto> getAllManagedUsers(AppUser currentUser);
+
+    UserResponseDto updateUserRole(UserRoleUpdateRequestDto request, AppUser currentUser);
 }

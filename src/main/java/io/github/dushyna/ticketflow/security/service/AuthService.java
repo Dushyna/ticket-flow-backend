@@ -1,5 +1,6 @@
 package io.github.dushyna.ticketflow.security.service;
 
+import io.github.dushyna.ticketflow.common.service.TranslationService;
 import io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException;
 import io.github.dushyna.ticketflow.mail.EmailService;
 import io.github.dushyna.ticketflow.security.dto.LoginRequest;
@@ -34,12 +35,13 @@ public class AuthService {
     private final PasswordResetService passwordResetService;
     private final PasswordEncoder passwordEncoder;
     private final CookieService cookieService;
+    private final TranslationService translationService;
 
     public void login(LoginRequest loginRequest, HttpServletResponse response) {
         String userEmail = loginRequest.email();
 
         AppUser user = userRepository.findByEmailIgnoreCase(userEmail)
-                .orElseThrow(() -> new RestApiException(HttpStatus.UNAUTHORIZED, "Invalid username or password."));
+                .orElseThrow(() -> new RestApiException(HttpStatus.UNAUTHORIZED, translationService.get("auth.invalid_credentials")));
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
@@ -58,20 +60,20 @@ public class AuthService {
             log.warn("Login attempt for inactive account: {}", userEmail);
             throw new RestApiException(
                     HttpStatus.FORBIDDEN,
-                    "User account is not active. Please confirm your email."
+                    translationService.get("auth.disabled")
             );
         } catch (LockedException ex) {
             log.warn("Login attempt for locked account: {}", userEmail);
             throw new RestApiException(
                     HttpStatus.FORBIDDEN,
-                    "User account is locked."
+                    translationService.get("auth.locked")
             );
         } catch (BadCredentialsException ex) {
             handleFailedLogin(user);
             log.warn("Bad credentials for user: {}", userEmail);
             throw new RestApiException(
                     HttpStatus.UNAUTHORIZED,
-                    "Invalid username or password."
+                    translationService.get("auth.invalid_credentials")
             );
         }
 
@@ -98,7 +100,8 @@ public class AuthService {
 
             emailService.sendResetPasswordEmail(
                     user.getEmail(),
-                    token.getToken()
+                    token.getToken(),
+                    org.springframework.context.i18n.LocaleContextHolder.getLocale()
             );
         });
     }
@@ -107,7 +110,7 @@ public class AuthService {
         PasswordResetToken resetToken = resetTokenRepository.findByToken(token)
                 .orElseThrow(() -> new RestApiException(
                         HttpStatus.BAD_REQUEST,
-                        "Invalid reset token"
+                        translationService.get("auth.token_expired")
                 ));
 
         if (resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {

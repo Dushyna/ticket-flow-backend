@@ -3,8 +3,10 @@ package io.github.dushyna.ticketflow.user.repository;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,4 +19,13 @@ public interface UserRepository extends JpaRepository<AppUser, UUID> {
 
     @Query("SELECT u FROM AppUser u LEFT JOIN FETCH u.organization WHERE UPPER(u.email) = UPPER(?1)")
     Optional<AppUser> findByEmailWithOrganization(String email);
+
+
+    @Query("""
+    SELECT u FROM AppUser u
+    WHERE (u.organization.id = :organizationId)
+    OR (u.role = 'ROLE_USER' AND u.organization IS NULL)
+""")
+    List<AppUser> findAllManagedAndAvailableUsers(@Param("organizationId") UUID organizationId);
+
 }

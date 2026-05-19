@@ -82,4 +82,9 @@ jwt:
   rt:
     live-in-min: ${JWT_RT_LIVE_IN_MIN:10080}
     secret: ${JWT_RT_SECRET}
+stripe:
+  api:
+    key: ${STRIPE_API_KEY}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET}
 

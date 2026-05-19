@@ -17,6 +17,7 @@ import io.github.dushyna.ticketflow.user.service.interfaces.UserService;
 import io.github.dushyna.ticketflow.user.utils.AppUserMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -83,7 +84,7 @@ public class UserRegisterServiceImpl implements UserRegisterService {
 
         final AppUser savedNewUser = userService.saveOrUpdate(appUser);
         String confirmationCode = confirmationService.generateConfirmationCode(savedNewUser);
-        emailService.sendConfirmationEmail(savedNewUser.getEmail(), confirmationCode);
+        emailService.sendConfirmationEmail(savedNewUser.getEmail(), confirmationCode, LocaleContextHolder.getLocale());
 
         return new UserCreateResponseDto(
                 savedNewUser.getId().toString(),
@@ -96,7 +97,7 @@ public class UserRegisterServiceImpl implements UserRegisterService {
     private UserCreateResponseDto handleExistingUser(AppUser existingUser) {
         if (UNCONFIRMED.equals(existingUser.getConfirmationStatus())) {
             String confirmationCode = confirmationService.regenerateCode(existingUser);
-            emailService.sendConfirmationEmail(existingUser.getEmail(), confirmationCode);
+            emailService.sendConfirmationEmail(existingUser.getEmail(), confirmationCode, LocaleContextHolder.getLocale());
             return new UserCreateResponseDto(
                     existingUser.getId().toString(),
                     existingUser.getEmail(),

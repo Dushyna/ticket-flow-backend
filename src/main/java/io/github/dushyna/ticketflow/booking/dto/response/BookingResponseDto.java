@@ -10,6 +10,9 @@ public record BookingResponseDto(
         @Schema(description = "Unique identifier of the booking", example = "550e8400-e29b-41d4-a716-446655440000")
         UUID id,
 
+        @Schema(description = "Unique identifier of the parent order (needed for re-payment)", example = "7aa8efab-1a2f-4b9e-9446-5962697ec610")
+        UUID orderId,
+
         @Schema(description = "Title of the movie", example = "Inception")
         String movieTitle,
 

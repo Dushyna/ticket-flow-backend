@@ -30,3 +30,9 @@ jwt:
 confirmation:
   expiration:
     days: 2
+
+stripe:
+  api:
+    key: sk_test_dummy_key_for_tests
+  webhook:
+    secret: whsec_dummy_secret_for_tests

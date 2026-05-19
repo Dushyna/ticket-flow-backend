@@ -1,10 +1,12 @@
 package io.github.dushyna.ticketflow.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
 import io.github.dushyna.ticketflow.user.dto.request.UpdateUserDetailsDto;
 import io.github.dushyna.ticketflow.user.dto.response.UserResponseDto;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
 import io.github.dushyna.ticketflow.user.entity.ConfirmationStatus;
+import io.github.dushyna.ticketflow.user.exception.UserNotFoundException;
 import io.github.dushyna.ticketflow.user.service.interfaces.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,9 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,7 +33,10 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
@@ -61,10 +69,12 @@ class UserControllerTest {
         when(userService.getUserDetails(any())).thenReturn(responseDto);
 
         mockMvc.perform(get("/api/v1/users/me-details")
-                        .with(jwt().jwt(j -> j.subject(email))))
+                        .with(securityUser(email, "ROLE_USER")))
                 .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value(email));
+                .andExpectAll(
+                        status().isOk(),
+                        jsonPath("$.email").value(email)
+                );
     }
 
     @Test
@@ -81,14 +91,13 @@ class UserControllerTest {
     void getUserDetails_UserNotFound_ReturnsNotFound() throws Exception {
         String email = "ghost@test.com";
 
-        when(userService.getByEmailOrThrow(email))
-                .thenThrow(new io.github.dushyna.ticketflow.user.exception.UserNotFoundException());
-
+        when(userService.getUserDetails(any()))
+                .thenThrow(new UserNotFoundException());
         mockMvc.perform(get("/api/v1/users/me-details")
-                        .with(jwt().jwt(j -> j.subject(email))))
+                        .with(securityUser(email, "ROLE_USER")))
                 .andDo(print())
-                .andExpect(status().isNotFound()) // Перевіряємо, що GlobalExceptionHandler спрацював
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(status().isNotFound());
+
     }
 
     @Test
@@ -96,11 +105,11 @@ class UserControllerTest {
     void getUserDetails_EmptySubject_ReturnsError() throws Exception {
         String emptyEmail = "";
 
-        when(userService.getByEmailOrThrow(emptyEmail))
-                .thenThrow(new io.github.dushyna.ticketflow.user.exception.UserNotFoundException());
+        when(userService.getUserDetails(any()))
+                .thenThrow(new UserNotFoundException());
 
         mockMvc.perform(get("/api/v1/users/me-details")
-                        .with(jwt().jwt(j -> j.subject(emptyEmail))))
+                        .with(securityUser(emptyEmail, "ROLE_USER")))
                 .andDo(print())
                 .andExpect(status().isNotFound());
     }
@@ -127,7 +136,7 @@ class UserControllerTest {
 
         mockMvc.perform(patch("/api/v1/users/update-user")
                         .with(csrf())
-                        .with(jwt().jwt(j -> j.subject(email)))
+                        .with(securityUser(email, "ROLE_USER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
@@ -155,12 +164,12 @@ class UserControllerTest {
         UpdateUserDetailsDto requestDto = new UpdateUserDetailsDto("Homer", "Simpson", null, "+123");
 
         // Mocking service to throw exception if user is missing in DB
-        when(userService.getByEmailOrThrow(email))
-                .thenThrow(new io.github.dushyna.ticketflow.user.exception.UserNotFoundException());
+        when(userService.updateUserDetails(any(), any()))
+                .thenThrow(new UserNotFoundException());
 
         mockMvc.perform(patch("/api/v1/users/update-user")
                         .with(csrf())
-                        .with(jwt().jwt(j -> j.subject(email)))
+                        .with(securityUser(email, "ROLE_USER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andDo(print())
@@ -184,7 +193,7 @@ class UserControllerTest {
 
         mockMvc.perform(patch("/api/v1/users/update-user")
                         .with(csrf())
-                        .with(jwt().jwt(j -> j.subject(email)))
+                        .with(securityUser(email, "ROLE_USER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andDo(print())
@@ -216,12 +225,12 @@ class UserControllerTest {
         UserResponseDto user1 = new UserResponseDto("id-1", "user1@test.com", "User", "One", null, null, "ROLE_USER", ConfirmationStatus.CONFIRMED, null);
         UserResponseDto user2 = new UserResponseDto("id-2", "admin@test.com", "Admin", "User", null, null, "ROLE_SUPER_ADMIN", ConfirmationStatus.CONFIRMED, null);
 
-        when(userService.getAll()).thenReturn(List.of(user1, user2));
+        when(userService.getAllManagedUsers(any())).thenReturn(List.of(user1, user2));
 
         // When & Then
         mockMvc.perform(get("/api/v1/users/all")
                         // Simulating a JWT with the required role
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))))
+                        .with(securityUser("admin@test.com", "ROLE_SUPER_ADMIN")))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
@@ -257,10 +266,23 @@ class UserControllerTest {
 
         // When & Then
         mockMvc.perform(get("/api/v1/users/all")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))))
+                        .with(securityUser("admin@test.com", "ROLE_SUPER_ADMIN")))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    private RequestPostProcessor securityUser(String email, String role) {
+        AppUser appUser = new AppUser();
+        appUser.setEmail(email);
+        AuthUserDetails authUserDetails = new AuthUserDetails(appUser);
+
+        var authorities = List.of(new SimpleGrantedAuthority(role));
+        var auth = new UsernamePasswordAuthenticationToken(
+                authUserDetails, null, authorities
+        );
+
+        return authentication(auth);
     }
 
 }

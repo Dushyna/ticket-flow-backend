@@ -22,13 +22,14 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             @Param("excludeId") UUID excludeId
     );
 
-    List<Showtime> findAllByMovieId(UUID movieId);
+    @Query("SELECT s FROM Showtime s WHERE s.movie.id = :movieId AND s.startTime >= CURRENT_TIMESTAMP ORDER BY s.startTime ASC")
+    List<Showtime> findAllByMovieId(@Param("movieId") UUID movieId);
 
     @Query("SELECT s FROM Showtime s " +
             "JOIN FETCH s.movie " +
             "JOIN FETCH s.hall " +
             "WHERE s.hall.cinema.id = :cinemaId " +
+            "AND s.startTime >= CURRENT_TIMESTAMP " +
             "ORDER BY s.startTime ASC")
     List<Showtime> findAllByCinemaIdWithDetails(@Param("cinemaId") UUID cinemaId);
-
 }

@@ -63,13 +63,19 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                     }
             } catch (ExpiredJwtException ex) {
                 SecurityContextHolder.clearContext();
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
+                logger.debug("Token expired: {}", ex.getMessage());
             }
         }
 
         filterChain.doFilter(request, response);
     }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.equals("/api/v1/auth/refresh-token");
+    }
+
 
     /**
      * Extracts JWT token from Authorization header or cookie.
@@ -82,4 +88,5 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             return null;
         }
     }
+
 }

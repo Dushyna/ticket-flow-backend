@@ -43,7 +43,7 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    public void refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
+    public String refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
         Cookie refreshCookie = WebUtils.getCookie(request, REFRESH_TOKEN_COOKIE);
         if (refreshCookie == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token missing");
@@ -52,6 +52,8 @@ public class AuthController implements AuthApi {
         String newAccessToken = authService.refreshAccessToken(refreshCookie.getValue());
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookieService.generateAccessTokenCookie(newAccessToken));
+
+        return newAccessToken;
     }
 
     @Override

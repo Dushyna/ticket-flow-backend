@@ -36,7 +36,7 @@ public interface AuthApi {
 
     @Operation(summary = "Refresh token", description = "Updates access token cookie using refresh token cookie")
     @PostMapping("/refresh-token")
-    void refreshAccessToken(HttpServletRequest request, HttpServletResponse response);
+    String refreshAccessToken(HttpServletRequest request, HttpServletResponse response);
 
     @Operation(summary = "Logout", description = "Clears authentication cookies")
     @PostMapping("/logout")
