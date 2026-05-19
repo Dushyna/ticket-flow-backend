@@ -1,5 +1,6 @@
 package io.github.dushyna.ticketflow.security.service;
 
+import io.github.dushyna.ticketflow.common.service.TranslationService;
 import io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException;
 import io.github.dushyna.ticketflow.mail.EmailService;
 import io.github.dushyna.ticketflow.security.dto.LoginRequest;
@@ -46,6 +47,8 @@ class AuthServiceTest {
     @Mock private PasswordResetService passwordResetService;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private CookieService cookieService;
+    @Mock private TranslationService translationService;
+
 
     @InjectMocks
     private AuthService authService;
@@ -97,6 +100,7 @@ class AuthServiceTest {
             given(userRepository.findByEmailIgnoreCase(email)).willReturn(Optional.of(user));
             given(userDetailsService.loadUserByUsername(any())).willReturn(mock(UserDetails.class));
             given(authenticationManager.authenticate(any())).willThrow(new BadCredentialsException("Invalid"));
+            given(translationService.get("auth.invalid_credentials")).willReturn("Invalid username or password.");
 
             // When & Then
             assertThatThrownBy(() -> authService.login(new LoginRequest("a@b.com", "p"), mock(HttpServletResponse.class)))
@@ -121,6 +125,7 @@ class AuthServiceTest {
             given(userRepository.findByEmailIgnoreCase(email)).willReturn(Optional.of(user));
             given(userDetailsService.loadUserByUsername(email)).willReturn(mock(UserDetails.class));
             given(authenticationManager.authenticate(any())).willThrow(new LockedException("Locked"));
+            given(translationService.get("auth.locked")).willReturn("User account is locked.");
 
             // When & Then
             assertThatThrownBy(() -> authService.login(new LoginRequest(email, "pass"), mock(HttpServletResponse.class)))
@@ -143,6 +148,7 @@ class AuthServiceTest {
             given(userRepository.findByEmailIgnoreCase(email)).willReturn(Optional.of(user));
             given(userDetailsService.loadUserByUsername(email)).willReturn(mock(UserDetails.class));
             given(authenticationManager.authenticate(any())).willThrow(new DisabledException("Account disabled"));
+            given(translationService.get("auth.disabled")).willReturn("User account is not active. Please confirm your email.");
 
             // When & Then
             assertThatThrownBy(() -> authService.login(new LoginRequest(email, "any"), mock(HttpServletResponse.class)))
@@ -166,6 +172,7 @@ class AuthServiceTest {
             given(userRepository.findByEmailIgnoreCase(email)).willReturn(Optional.of(user));
             given(userDetailsService.loadUserByUsername(email)).willReturn(mock(UserDetails.class));
             given(authenticationManager.authenticate(any())).willThrow(new BadCredentialsException("Wrong"));
+            given(translationService.get("auth.invalid_credentials")).willReturn("Invalid username or password.");
 
             // When
             assertThatThrownBy(() -> authService.login(new LoginRequest(email, "wrong"), mock(HttpServletResponse.class)))
@@ -243,7 +250,11 @@ class AuthServiceTest {
             authService.forgotPassword(email);
 
             // Then
-            verify(emailService).sendResetPasswordEmail(email, "reset-code");
+            verify(emailService).sendResetPasswordEmail(
+                    eq(email),
+                    eq("reset-code"),
+                    any(java.util.Locale.class)
+            );
         }
 
         @Test
@@ -286,8 +297,7 @@ class AuthServiceTest {
             // Given
             String nonExistentToken = "fake-token-123";
             given(resetTokenRepository.findByToken(nonExistentToken)).willReturn(Optional.empty());
-
-            // When & Then
+            given(translationService.get("auth.token_expired")).willReturn("Invalid reset token");            // When & Then
             assertThatThrownBy(() -> authService.validateResetToken(nonExistentToken))
                     .isInstanceOf(RestApiException.class)
                     .satisfies(ex -> {

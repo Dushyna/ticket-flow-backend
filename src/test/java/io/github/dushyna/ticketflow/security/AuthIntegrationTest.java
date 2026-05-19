@@ -1,6 +1,7 @@
 package io.github.dushyna.ticketflow.security;
 
 import io.github.dushyna.ticketflow.base.BaseIT;
+import io.github.dushyna.ticketflow.common.service.TranslationService;
 import io.github.dushyna.ticketflow.exception.handling.response.ErrorResponseDto;
 import io.github.dushyna.ticketflow.mail.EmailService;
 import io.github.dushyna.ticketflow.security.constants.Constants;
@@ -66,6 +67,10 @@ class AuthIntegrationTest extends BaseIT {
     @Autowired
     private PasswordResetTokenRepository tokenRepository;
 
+    @Autowired
+    private TranslationService translationService;
+
+
     @MockitoBean private S3Client s3Client;
     @MockitoBean private S3AsyncClient s3AsyncClient;
     @MockitoBean private JavaMailSender javaMailSender;
@@ -128,8 +133,8 @@ class AuthIntegrationTest extends BaseIT {
         assertThat(body).isNotNull();
         assertThat(body.status()).isEqualTo(401);
         assertThat(body.error()).isEqualTo("Unauthorized");
-        assertThat(body.message()).isEqualTo("Invalid username or password.");
-
+        String expectedMessage = translationService.get("auth.invalid_credentials");
+        assertThat(body.message()).isEqualTo(expectedMessage);
         // timestamp mapping will now work correctly thanks to JavaTimeModule in BaseIT
         assertThat(body.timestamp()).isBeforeOrEqualTo(LocalDateTime.now());
     }
@@ -188,11 +193,12 @@ class AuthIntegrationTest extends BaseIT {
         // 3. Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
+        String expectedMessage = translationService.get("auth.locked");
         assertThat(response.getBody())
                 .isNotNull()
                 .satisfies(body -> {
                     assertThat(body.status()).isEqualTo(403);
-                    assertThat(body.message()).isEqualTo("User account is locked.");
+                    assertThat(body.message()).isEqualTo(expectedMessage);
                 });
     }
 
@@ -224,8 +230,11 @@ class AuthIntegrationTest extends BaseIT {
         assertThat(tokens.getFirst().getToken()).isNotBlank();
 
         // Verify that the email service was triggered
-        verify(emailService, atLeastOnce()).sendResetPasswordEmail(eq(email), anyString());
-    }
+        verify(emailService, atLeastOnce()).sendResetPasswordEmail(
+                eq(email),
+                anyString(),
+                any(java.util.Locale.class)
+        );    }
 
 
     @Test
@@ -379,7 +388,7 @@ class AuthIntegrationTest extends BaseIT {
                 "/api/v1/auth/refresh-token",
                 org.springframework.http.HttpMethod.POST,
                 entity,
-                ErrorResponseDto.class
+                 ErrorResponseDto.class
         );
 
         // 3. Then
@@ -402,8 +411,10 @@ class AuthIntegrationTest extends BaseIT {
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().message()).isEqualTo("Invalid reset token");
-    }
+        String expectedMessage = translationService.get("auth.token_expired");
+        assertThat(response.getBody().message()).isEqualTo(expectedMessage);    }
+
+
     @Test
     @DisplayName("Integration Reset Token Error: Should return 400 when token has expired")
     void validateResetToken_ShouldReturn400_WhenExpired() {

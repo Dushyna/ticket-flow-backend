@@ -16,12 +16,14 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -114,9 +116,8 @@ class AuthControllerTest  {
                         .with(csrf())
                         .cookie(refreshCookie))
                 .andExpect(status().isOk())
-                .andExpect(cookie().exists(ACCESS_TOKEN_COOKIE))
-                .andExpect(cookie().value(ACCESS_TOKEN_COOKIE, "new-access-token"))
-                .andExpect(cookie().httpOnly(ACCESS_TOKEN_COOKIE, true));
+                .andExpect(content().string("new-access-token"))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("access_token=new-access-token")));
     }
 
     @Test

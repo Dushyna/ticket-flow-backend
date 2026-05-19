@@ -2,12 +2,10 @@
 <#-- @ftlvariable name="t_title" type="java.lang.String" -->
 <#-- @ftlvariable name="t_header" type="java.lang.String" -->
 <#-- @ftlvariable name="t_greeting" type="java.lang.String" -->
-<#-- @ftlvariable name="t_thanks" type="java.lang.String" -->
-<#-- @ftlvariable name="t_instruction" type="java.lang.String" -->
+<#-- @ftlvariable name="t_text" type="java.lang.String" -->
 <#-- @ftlvariable name="t_button" type="java.lang.String" -->
-<#-- @ftlvariable name="t_fallback" type="java.lang.String" -->
+<#-- @ftlvariable name="t_ignore" type="java.lang.String" -->
 <#-- @ftlvariable name="t_footer_rights" type="java.lang.String" -->
-
 <!doctype html>
 <html lang="${.locale}">
 <head>
@@ -96,13 +94,11 @@
                 <tr>
                     <td class="content">
                         <h2>${t_greeting}</h2>
-                        <p>${t_thanks}</p>
-                        <p>${t_instruction}</p>
+                        <p>${t_text}</p>
                         <p style="text-align:center; margin:30px 0;">
                             <a href="${link}" class="button">${t_button}</a>
                         </p>
-                        <p>${t_fallback}</p>
-                        <p><a href="${link}">${link}</a></p>
+                        <p>${t_ignore}</p>
                     </td>
                 </tr>
                 <tr>

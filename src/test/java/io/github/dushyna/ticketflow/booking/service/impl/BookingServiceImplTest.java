@@ -6,11 +6,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dushyna.ticketflow.booking.dto.request.BookingCreateDto;
 import io.github.dushyna.ticketflow.booking.dto.request.SeatCoordinateRequestDto;
 import io.github.dushyna.ticketflow.booking.dto.response.BookingResponseDto;
+import io.github.dushyna.ticketflow.booking.dto.response.PaymentResponseDto;
 import io.github.dushyna.ticketflow.booking.dto.response.SeatCoordinateDto;
 import io.github.dushyna.ticketflow.booking.entity.Booking;
 import io.github.dushyna.ticketflow.booking.entity.BookingStatus;
+import io.github.dushyna.ticketflow.booking.entity.Order;
 import io.github.dushyna.ticketflow.booking.repository.BookingRepository;
+import io.github.dushyna.ticketflow.booking.repository.OrderRepository;
 import io.github.dushyna.ticketflow.booking.utils.BookingMapper;
+import io.github.dushyna.ticketflow.cinema.entity.Movie;
 import io.github.dushyna.ticketflow.cinema.entity.MovieHall;
 import io.github.dushyna.ticketflow.cinema.entity.Showtime;
 import io.github.dushyna.ticketflow.cinema.entity.TicketType;
@@ -18,6 +22,7 @@ import io.github.dushyna.ticketflow.cinema.repository.ShowtimeRepository;
 import io.github.dushyna.ticketflow.cinema.repository.TicketTypeRepository;
 import io.github.dushyna.ticketflow.common.service.TranslationService;
 import io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException;
+import io.github.dushyna.ticketflow.payment.service.PaymentService;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +54,11 @@ class BookingServiceImplTest {
     @Mock private TicketTypeRepository ticketTypeRepository;
     @Mock private BookingMapper bookingMapper;
     @Mock private TranslationService translationService;
+    @Mock private OrderRepository orderRepository;
+    @Mock private PaymentService paymentService;
+    @Mock private com.stripe.model.checkout.Session stripeSession;
+
+
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
@@ -80,13 +90,18 @@ class BookingServiceImplTest {
         showtime.setBasePrice(new BigDecimal("100.00"));
         ReflectionTestUtils.setField(showtime, "id", showtimeId);
 
+        Movie movie = new Movie();
+        movie.setTitle("Inception");
+        showtime.setMovie(movie);
+
+
         lenient().when(translationService.get(anyString())).thenReturn("Some message");
         lenient().when(translationService.get(anyString(), any())).thenReturn("Some message with args");
     }
 
     @Test
-    @DisplayName("createBookings: Success - calculate price with multipliers")
-    void createBookings_Success() {
+    @DisplayName("createBookings: Success - calculate price and return Stripe URL")
+    void createBookings_Success() throws Exception {
         // Given
         UUID ticketTypeId = UUID.randomUUID();
         var seatDto = new SeatCoordinateRequestDto(0, 0, ticketTypeId);
@@ -98,16 +113,23 @@ class BookingServiceImplTest {
         given(showtimeRepository.findById(showtimeId)).willReturn(Optional.of(showtime));
         given(ticketTypeRepository.findById(ticketTypeId)).willReturn(Optional.of(tt));
 
-        given(bookingRepository.existsByShowtimeIdAndRowIndexAndColIndexAndStatusIn(any(), anyInt(), anyInt(), any()))
-                .willReturn(false);
+        // Mock Stripe session behavior
+        given(paymentService.createCheckoutSession(any(Order.class), anyString())).willReturn(stripeSession);
+        given(stripeSession.getUrl()).willReturn("https://stripe.com");
+        given(stripeSession.getId()).willReturn("cs_test_123");
 
         // When
-        bookingService.createBookings(createDto, user);
+        PaymentResponseDto result = bookingService.createBookings(createDto, user);
 
         // Then
-        verify(bookingRepository).save(argThat(b ->
-                b.getFinalPrice().compareTo(new BigDecimal("120.00")) == 0 &&
-                        b.getStatus() == BookingStatus.PENDING
+        assertThat(result.paymentUrl()).isEqualTo("https://stripe.com");
+
+        // Verify that ORDER was saved (not just booking)
+        verify(orderRepository, times(1)).save(argThat(order ->
+                order.getTotalPrice().compareTo(new BigDecimal("120.00")) == 0 &&
+                        order.getBookings().size() == 1 &&
+                        order.getStatus() == BookingStatus.PENDING &&
+                        "cs_test_123".equals(order.getStripeSessionId())
         ));
     }
 
@@ -133,13 +155,16 @@ class BookingServiceImplTest {
     @Test
     @SuppressWarnings("unchecked")
     @DisplayName("createBookings: Success - should use objectMapper to parse layout")
-    void createBookings_UsesObjectMapper() {
+    void createBookings_UsesObjectMapper() throws Exception {
         // Given
         var seatDto = new SeatCoordinateRequestDto(0, 0, null);
         var createDto = new BookingCreateDto(showtimeId, List.of(seatDto));
 
-        showtime.setStartTime(Instant.now().plus(Duration.ofDays(1)));
         given(showtimeRepository.findById(showtimeId)).willReturn(Optional.of(showtime));
+        // Add stripe mocks to avoid NPE
+        given(paymentService.createCheckoutSession(any(), any())).willReturn(stripeSession);
+        given(stripeSession.getUrl()).willReturn("http://url");
+        given(stripeSession.getId()).willReturn("id");
 
         // When
         bookingService.createBookings(createDto, user);
@@ -158,12 +183,12 @@ class BookingServiceImplTest {
         showtime.setStartTime(Instant.now().plus(Duration.ofDays(1)));
         given(showtimeRepository.findById(showtimeId)).willReturn(Optional.of(showtime));
 
-        given(translationService.get(eq("booking.seat.taken"), any(), any()))
-                .willReturn("Seat 1:1 is already taken");
+        given(translationService.get("booking.seat.taken"))
+                .willReturn("Seat is already taken");
 
-        given(bookingRepository.existsByShowtimeIdAndRowIndexAndColIndexAndStatusIn(any(), anyInt(), anyInt(), any()))
-                .willReturn(true);
 
+        doThrow(new org.springframework.dao.DataIntegrityViolationException("Duplicate key"))
+                .when(orderRepository).flush();
         // When & Then
         assertThatThrownBy(() -> bookingService.createBookings(createDto, user))
                 .isInstanceOf(RestApiException.class)
@@ -226,7 +251,7 @@ class BookingServiceImplTest {
         Booking b = new Booking();
         b.setRowIndex(5);
         b.setColIndex(10);
-        given(bookingRepository.findAllByShowtimeIdAndStatusIn(eq(showtimeId), any())).willReturn(List.of(b));
+        given(bookingRepository.findOccupiedOrLocked(eq(showtimeId))).willReturn(List.of(b));
 
         // When
         List<SeatCoordinateDto> result = bookingService.getOccupiedSeats(showtimeId);
@@ -242,7 +267,7 @@ class BookingServiceImplTest {
     void getOccupiedSeats_EmptyResult_ReturnsEmptyList() {
         // Given
         UUID showtimeId = UUID.randomUUID();
-        given(bookingRepository.findAllByShowtimeIdAndStatusIn(eq(showtimeId), any()))
+        given(bookingRepository.findOccupiedOrLocked(eq(showtimeId)))
                 .willReturn(Collections.emptyList());
 
         // When
@@ -251,7 +276,7 @@ class BookingServiceImplTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result).isEmpty();
-        verify(bookingRepository).findAllByShowtimeIdAndStatusIn(eq(showtimeId), any());
+        verify(bookingRepository).findOccupiedOrLocked(eq(showtimeId));
     }
 
 
@@ -265,8 +290,7 @@ class BookingServiceImplTest {
         activeBooking.setColIndex(1);
 
         // We verify that the service correctly passes ACTIVE_STATUSES to the repository
-        given(bookingRepository.findAllByShowtimeIdAndStatusIn(eq(showtimeId),
-                argThat(list -> list.contains(BookingStatus.PENDING) && list.contains(BookingStatus.CONFIRMED))))
+        given(bookingRepository.findOccupiedOrLocked(eq(showtimeId)))
                 .willReturn(List.of(activeBooking));
 
         // When

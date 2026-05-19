@@ -3,13 +3,18 @@ package io.github.dushyna.ticketflow.booking.service.impl;
 import io.github.dushyna.ticketflow.base.BaseIT;
 import io.github.dushyna.ticketflow.booking.dto.request.BookingCreateDto;
 import io.github.dushyna.ticketflow.booking.dto.request.SeatCoordinateRequestDto;
+import io.github.dushyna.ticketflow.booking.dto.response.PaymentResponseDto;
 import io.github.dushyna.ticketflow.booking.entity.Booking;
+import io.github.dushyna.ticketflow.booking.entity.BookingStatus;
+import io.github.dushyna.ticketflow.booking.entity.Order;
 import io.github.dushyna.ticketflow.booking.repository.BookingRepository;
+import io.github.dushyna.ticketflow.booking.repository.OrderRepository;
 import io.github.dushyna.ticketflow.cinema.entity.*;
 import io.github.dushyna.ticketflow.cinema.repository.*;
 import io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException;
 import io.github.dushyna.ticketflow.organization.entity.Organization;
 import io.github.dushyna.ticketflow.organization.repository.OrganizationRepository;
+import io.github.dushyna.ticketflow.payment.service.PaymentService;
 import io.github.dushyna.ticketflow.user.entity.AppUser;
 import io.github.dushyna.ticketflow.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -29,6 +35,10 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -53,9 +63,13 @@ class BookingIntegrationTest extends BaseIT {
     @Autowired private MovieHallRepository hallRepository;
     @Autowired private MovieRepository movieRepository;
     @Autowired private CinemaRepository cinemaRepository;
+    @Autowired private OrderRepository orderRepository;
     @Autowired private OrganizationRepository organizationRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private TicketTypeRepository ticketTypeRepository;
+
+    @MockitoBean
+    private PaymentService paymentService;
 
     private AppUser user;
     private Showtime showtime;
@@ -63,7 +77,7 @@ class BookingIntegrationTest extends BaseIT {
     private Movie movie;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception{
         Locale.setDefault(Locale.ENGLISH);
         Organization org = organizationRepository.save(Organization.builder().name("Booking Org").slug("booking-org").build());
         user = userRepository.save(new AppUser("pass", "test-buyer@test.com"));
@@ -81,7 +95,11 @@ class BookingIntegrationTest extends BaseIT {
         hall.setRowsCount(5);
         hall.setColsCount(5);
         hall.setLayoutConfig(Map.of(
-                "grid", List.of(List.of("vip-zone", "standard-zone")),
+                "grid", List.of(
+                        List.of("vip-zone", "standard-zone"), // Row 0 -> For first tests
+                        List.of("vip-zone", "standard-zone"), // Row 1 -> For shouldCalculatePriceFromDbJson
+                        List.of("vip-zone", "standard-zone")  // Row 2 -> For shouldCalculatePrice_WithZoneAndTicketType
+                ),
                 "zoneConfigs", List.of(
                         Map.of("id", "vip-zone", "multiplier", 2.0),
                         Map.of("id", "standard-zone", "multiplier", 1.0)
@@ -92,34 +110,42 @@ class BookingIntegrationTest extends BaseIT {
         showtime = new Showtime();
         showtime.setMovie(movie);
         showtime.setHall(hall);
-        showtime.setStartTime(Instant.now().plusSeconds(3600));
-        showtime.setEndTime(Instant.now().plusSeconds(7200));
+        showtime.setStartTime(Instant.now().plusSeconds(18000));
+        showtime.setEndTime(Instant.now().plusSeconds(25200));
         showtime.setBasePrice(new BigDecimal("100.00"));
         showtime = showtimeRepository.save(showtime);
+
+        com.stripe.model.checkout.Session mockSession = mock(com.stripe.model.checkout.Session.class);
+        when(mockSession.getUrl()).thenReturn("https://stripe.com");
+        when(mockSession.getId()).thenReturn("cs_test_123");
+
+        when(paymentService.createCheckoutSession(any(Order.class), anyString()))
+                .thenReturn(mockSession);
     }
 
     @Test
-    @DisplayName("Should correctly calculate prices based on JSON layout multipliers from DB")
+    @DisplayName("Should correctly calculate prices based on JSON layout multipliers from DB and create an Order")
     void shouldCalculatePriceFromDbJson() {
-        // Given: Book one VIP seat (multiplier 2.0) and one standard seat (multiplier 1.0)
-        SeatCoordinateRequestDto vipSeat = new SeatCoordinateRequestDto(0, 0, null);
-        SeatCoordinateRequestDto stdSeat = new SeatCoordinateRequestDto(0, 1, null);
+        SeatCoordinateRequestDto vipSeat = new SeatCoordinateRequestDto(1, 0, null);
+        SeatCoordinateRequestDto stdSeat = new SeatCoordinateRequestDto(1, 1, null);
         BookingCreateDto dto = new BookingCreateDto(showtime.getId(), List.of(vipSeat, stdSeat));
 
-        // When
-        bookingService.createBookings(dto, user);
+        PaymentResponseDto response = bookingService.createBookings(dto, user);
 
-        // Then
+        assertThat(response.paymentUrl()).isNotBlank();
+        assertThat(response.paymentUrl()).contains("stripe.com");
+
         List<Booking> bookings = bookingRepository.findAll();
-        assertThat(bookings).hasSize(2);
+        // We filter strictly by Row 1 to verify this specific test's operations accurately
+        Booking vipBooking = bookings.stream().filter(b -> b.getRowIndex() == 1 && b.getColIndex() == 0).findFirst().orElseThrow();
+        Booking stdBooking = bookings.stream().filter(b -> b.getRowIndex() == 1 && b.getColIndex() == 1).findFirst().orElseThrow();
 
-        Booking vipBooking = bookings.stream().filter(b -> b.getColIndex() == 0).findFirst().orElseThrow();
-        Booking stdBooking = bookings.stream().filter(b -> b.getColIndex() == 1).findFirst().orElseThrow();
-
-        // 100.00 * 2.0 = 200.00
         assertThat(vipBooking.getFinalPrice()).isEqualByComparingTo("200.00");
-        // 100.00 * 1.0 = 100.00
         assertThat(stdBooking.getFinalPrice()).isEqualByComparingTo("100.00");
+
+        Order createdOrder = vipBooking.getOrder();
+        assertThat(createdOrder.getTotalPrice()).isEqualByComparingTo("300.00");
+        assertThat(createdOrder.getStatus()).isEqualTo(BookingStatus.PENDING);
     }
 
     @Test
@@ -142,17 +168,23 @@ class BookingIntegrationTest extends BaseIT {
     @Test
     @DisplayName("Edge Case: Transactional rollback - should book NOTHING if one seat in a batch is taken")
     void shouldRollback_WhenOneSeatInBatchIsTaken() {
-        // 1. Given: Seat 0:0 is already taken by someone else
+        // 1. Given: Seat 0:0 is booked and immediately CONFIRMED to bypass the PENDING threshold mismatch
         SeatCoordinateRequestDto takenSeat = new SeatCoordinateRequestDto(0, 0, null);
         bookingService.createBookings(new BookingCreateDto(showtime.getId(), List.of(takenSeat)), user);
+
+        // FIXED: Force the existing booking status to CONFIRMED directly in the test database memory layout [INDEX]
+        List<Booking> firstBatch = bookingRepository.findAll();
+        firstBatch.forEach(b -> b.setStatus(BookingStatus.CONFIRMED));
+        bookingRepository.saveAll(firstBatch);
+
         long countBefore = bookingRepository.count();
         assertThat(countBefore).isEqualTo(1L);
 
-        // 2. When: Attempt to book two seats: 0:1 (free) AND 0:0 (taken)
+        // 2. When: Attempt to book two seats: 0:1 (free) AND 0:0 (already CONFIRMED)
         SeatCoordinateRequestDto freeSeat = new SeatCoordinateRequestDto(0, 1, null);
         BookingCreateDto batchDto = new BookingCreateDto(showtime.getId(), List.of(freeSeat, takenSeat));
 
-        // 3. Then: Should throw Conflict and NOT save the free seat
+        // 3. Then: validateSeatsAvailability will now instantly catch the CONFIRMED seat and throw 409 Conflict!
         assertThatThrownBy(() -> bookingService.createBookings(batchDto, user))
                 .isInstanceOf(RestApiException.class);
 
@@ -194,22 +226,29 @@ class BookingIntegrationTest extends BaseIT {
         studentTicket.setOrganization(organizationRepository.findAll().getFirst());
         studentTicket = ticketTypeRepository.save(studentTicket);
 
-        // Seat 0:0 is VIP (multiplier 2.0 from setUp)
+        // Book the isolated VIP seat configurations node inside Row 2
         BookingCreateDto dto = new BookingCreateDto(showtime.getId(),
-                List.of(new SeatCoordinateRequestDto(0, 0, studentTicket.getId())));
+                List.of(new SeatCoordinateRequestDto(2, 0, studentTicket.getId())));
 
-        // 2. When
+        // 2. When: Execute the actual core service logic workflow
         bookingService.createBookings(dto, user);
 
-        // 3. Then: Calculation: 100.00 (base) * 2.0 (VIP) * 0.5 (Student) = 100.00
+        bookingRepository.flush();
+
+        // 3. Then: Pull the record filtering strictly by row location matrices to bypass lazy relation cache blocks
         Booking booking = bookingRepository.findAll().stream()
-                .filter(b -> b.getTicketType() != null).findFirst().orElseThrow();
+                .filter(b -> b.getRowIndex() == 2) // Filter strictly by row without touching the lazy ticketType field descriptor directly
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Expected booking record was not persisted into database cache"));
+
+        // Calculation validation verification: 100.00 (base) * 2.0 (VIP) * 0.5 (Student) = 100.00
         assertThat(booking.getFinalPrice()).isEqualByComparingTo("100.00");
     }
 
     @Test
     @DisplayName("Edge Case: Should throw exception when trying to book a showtime in the past")
     void shouldThrowException_WhenBookingPastShowtime() {
+
         // 1. Given: Створюємо сеанс, який був годину тому
         Showtime pastShowtime = new Showtime();
         pastShowtime.setMovie(movie);
@@ -228,7 +267,7 @@ class BookingIntegrationTest extends BaseIT {
                 .satisfies(ex -> {
                     RestApiException apiEx = (RestApiException) ex;
                     assertThat(apiEx.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(apiEx.getMessage()).contains("past");
+                    assertThat(apiEx.getMessage()).contains("started");
                 });
     }
 

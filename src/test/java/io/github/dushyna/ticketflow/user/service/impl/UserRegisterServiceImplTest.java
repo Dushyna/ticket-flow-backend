@@ -22,9 +22,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -68,10 +70,14 @@ class UserRegisterServiceImplTest {
 
         // Then
         assertThat(response.email()).isEqualTo("new@test.com");
-        assertThat(response.confirmationResent()).isFalse(); // Правильне поле
+        assertThat(response.confirmationResent()).isFalse();
         assertThat(response.id()).isEqualTo(userId.toString());
 
-        verify(emailService).sendConfirmationEmail("new@test.com", "code123");
+        verify(emailService).sendConfirmationEmail(
+                eq("new@test.com"),
+                eq("code123"),
+                any(Locale.class)
+        );
     }
 
     @Test
@@ -96,7 +102,7 @@ class UserRegisterServiceImplTest {
         // Then
         assertThat(response.confirmationResent()).isTrue();
         assertThat(response.email()).isEqualTo("unconfirmed@test.com");
-        verify(emailService).sendConfirmationEmail("unconfirmed@test.com", "newCode");
+        verify(emailService).sendConfirmationEmail(eq("unconfirmed@test.com"), eq("newCode"), any(Locale.class));
         verify(userService, never()).saveOrUpdate(any());
     }
 
@@ -119,6 +125,8 @@ class UserRegisterServiceImplTest {
     @Test
     @DisplayName("registerTenant: Success - should create organization and admin with ROLE_TENANT_ADMIN")
     void registerTenant_Success() {
+        Locale testLocale = Locale.ENGLISH;
+        LocaleContextHolder.setLocale(testLocale);
         // 1. Given
         OrganizationCreateDto orgDto = new OrganizationCreateDto(
                 "Cinema World",
@@ -163,8 +171,13 @@ class UserRegisterServiceImplTest {
                         user.getEmail().equals("owner@test.com")
         ));
 
-        verify(emailService).sendConfirmationEmail(eq("owner@test.com"), eq("admin-confirm-code"));
-    }
+        verify(emailService).sendConfirmationEmail(
+                eq("owner@test.com"),
+                eq("admin-confirm-code"),
+                eq(testLocale)
+        );
+
+        LocaleContextHolder.resetLocaleContext();    }
 
     @Test
     @DisplayName("confirmRegistration: Success - should activate user and map to response DTO")
@@ -251,7 +264,7 @@ class UserRegisterServiceImplTest {
 
         assertThat(response.email()).isEqualTo(normalizedEmail);
 
-        verify(emailService).sendConfirmationEmail(eq(normalizedEmail), anyString());
+        verify(emailService).sendConfirmationEmail(eq(normalizedEmail), anyString(),any(Locale.class));
     }
 
     @Test

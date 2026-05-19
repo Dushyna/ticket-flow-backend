@@ -82,7 +82,8 @@ class JwtTokenServiceTest {
     void validateToken_ManipulatedToken_ReturnsFalse() {
         String token = jwtTokenService.generateAccessToken("user@test.com");
 
-        String manipulatedToken = token.substring(0, token.length() - 1) + (token.endsWith("a") ? "b" : "a");
+        int indexToChange = token.length() - 10;
+        String manipulatedToken = token.substring(0, indexToChange) + 'X' + token.substring(indexToChange + 1);
 
         boolean isValid = jwtTokenService.validateToken(manipulatedToken, JwtTokenService.TokenType.ACCESS);
 

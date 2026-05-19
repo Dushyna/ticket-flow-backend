@@ -38,6 +38,10 @@ public class Booking extends BaseEntity {
     @JoinColumn(name = "ticket_type_id")
     private TicketType ticketType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
+    private Order order;
+
     @Column(name = "row_index", nullable = false)
     private Integer rowIndex;
 
@@ -60,6 +64,17 @@ public class Booking extends BaseEntity {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
+    @Column(name = "checked_in", nullable = false)
+    private boolean checkedIn = false;
+
+    @Column(name = "checked_in_at")
+    private Instant checkedInAt;
+
+
+
     @Override
     public String toString() {
         return "Booking{" +
@@ -71,4 +86,9 @@ public class Booking extends BaseEntity {
                 ", status=" + status +
                 '}';
     }
+
+    public boolean isExpired() {
+        return status == BookingStatus.PENDING && Instant.now().isAfter(expiresAt);
+    }
+
 }

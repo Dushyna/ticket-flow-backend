@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.dushyna.ticketflow.booking.dto.request.BookingCreateDto;
 import io.github.dushyna.ticketflow.booking.dto.request.SeatCoordinateRequestDto;
 import io.github.dushyna.ticketflow.booking.dto.response.BookingResponseDto;
+import io.github.dushyna.ticketflow.booking.dto.response.PaymentResponseDto;
 import io.github.dushyna.ticketflow.booking.dto.response.SeatCoordinateDto;
 import io.github.dushyna.ticketflow.booking.service.interfaces.BookingService;
 import io.github.dushyna.ticketflow.security.dto.AuthUserDetails;
@@ -67,11 +68,19 @@ class BookingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/bookings - Success: Create bookings for authenticated user")
+    @DisplayName("POST /api/v1/bookings - Success: Create bookings and return payment URL")
     void createBooking_Success() throws Exception {
         // Given
-        SeatCoordinateRequestDto seat = new SeatCoordinateRequestDto(5, 10, UUID.randomUUID());
+        UUID ticketTypeId = UUID.randomUUID();
+        SeatCoordinateRequestDto seat = new SeatCoordinateRequestDto(5, 10, ticketTypeId);
         BookingCreateDto requestDto = new BookingCreateDto(SHOWTIME_ID, List.of(seat));
+
+        // Mock the service to return a payment URL
+        String expectedUrl = "https://stripe.com";
+        PaymentResponseDto responseDto = new PaymentResponseDto(expectedUrl);
+
+        when(bookingService.createBookings(any(BookingCreateDto.class), any(AppUser.class)))
+                .thenReturn(responseDto);
 
         // When & Then
         mockMvc.perform(post("/api/v1/bookings")
@@ -80,7 +89,9 @@ class BookingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andDo(print())
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                // Check if JSON contains the paymentUrl
+                .andExpect(jsonPath("$.paymentUrl").value(expectedUrl));
 
         verify(bookingService, times(1)).createBookings(any(BookingCreateDto.class), any(AppUser.class));
     }
@@ -88,14 +99,14 @@ class BookingControllerTest {
     @Test
     @DisplayName("POST /api/v1/bookings - Failure: Conflict if seats are taken")
     void createBooking_Conflict() throws Exception {
-        // Given: Create a VALID DTO so it passes validation (needs at least one seat)
+        // Given
         SeatCoordinateRequestDto seat = new SeatCoordinateRequestDto(1, 1, UUID.randomUUID());
         BookingCreateDto requestDto = new BookingCreateDto(SHOWTIME_ID, List.of(seat));
 
-        // Mock service to throw Conflict ONLY when validation is passed
-        doThrow(new io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException(
-                HttpStatus.CONFLICT, "Seats already taken"))
-                .when(bookingService).createBookings(any(BookingCreateDto.class), any(AppUser.class));
+        // Change doThrow to when().thenThrow() because method is no longer void
+        when(bookingService.createBookings(any(BookingCreateDto.class), any(AppUser.class)))
+                .thenThrow(new io.github.dushyna.ticketflow.exception.handling.exceptions.common.RestApiException(
+                        HttpStatus.CONFLICT, "Seats already taken"));
 
         // When & Then
         mockMvc.perform(post("/api/v1/bookings")
@@ -103,8 +114,7 @@ class BookingControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
-                .andDo(print())
-                .andExpect(status().isConflict()); // Now it will reach 409
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -240,7 +250,7 @@ class BookingControllerTest {
     void getMyBookings_Success() throws Exception {
         // Given
         BookingResponseDto booking = new BookingResponseDto(
-                UUID.randomUUID(), "Inception", "Hall A", Instant.now(),
+                UUID.randomUUID(), UUID.randomUUID(),"Inception", "Hall A", Instant.now(),
                 new SeatCoordinateDto(5, 5), "Adult", new BigDecimal("15.00"), "CONFIRMED"
         );
         when(bookingService.getUserBookings(any(AppUser.class))).thenReturn(List.of(booking));
@@ -294,7 +304,7 @@ class BookingControllerTest {
     void getMyBookings_VerifyNestedData() throws Exception {
         // Given
         BookingResponseDto booking = new BookingResponseDto(
-                UUID.randomUUID(), "Inception", "Hall A", Instant.now(),
+                UUID.randomUUID(), UUID.randomUUID(), "Inception", "Hall A", Instant.now(),
                 new SeatCoordinateDto(7, 8), "Adult", new BigDecimal("15.00"), "CONFIRMED"
         );
         when(bookingService.getUserBookings(any(AppUser.class))).thenReturn(List.of(booking));
