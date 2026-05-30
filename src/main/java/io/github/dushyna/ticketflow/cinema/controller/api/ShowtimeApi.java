@@ -80,4 +80,10 @@ public interface ShowtimeApi {
     @GetMapping("/cinema/{cinemaId}")
     @PreAuthorize("permitAll()")
     List<ShowtimeResponseDto> getByCinema(@PathVariable UUID cinemaId);
+
+    @Operation(summary = "Get all active showtimes", description = "Returns a list of all future scheduled movie sessions.")
+    @GetMapping
+    @PreAuthorize("permitAll()")
+    List<ShowtimeResponseDto> getAllActiveShowtimes();
+
 }

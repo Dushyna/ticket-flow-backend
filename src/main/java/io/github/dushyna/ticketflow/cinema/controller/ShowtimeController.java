@@ -56,4 +56,10 @@ public class ShowtimeController implements ShowtimeApi {
     public List<ShowtimeResponseDto> getByCinema(UUID cinemaId) {
         return showtimeService.getShowtimesByCinema(cinemaId);
     }
+
+    @Override
+    public List<ShowtimeResponseDto> getAllActiveShowtimes() {
+        return showtimeService.getAllActiveShowtimes();
+    }
+
 }

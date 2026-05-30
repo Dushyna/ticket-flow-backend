@@ -268,9 +268,7 @@ class BookingControllerTest {
     void getMyBookings_Anonymous_ReturnsForbidden() throws Exception {
         // When & Then
         mockMvc.perform(get("/api/v1/bookings/my"))
-                .andDo(print())
-                // Use isForbidden() because Spring Security returns 403 for this endpoint
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

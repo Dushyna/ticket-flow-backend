@@ -24,14 +24,15 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("""
         SELECT DISTINCT o FROM Order o
         JOIN FETCH o.bookings b
-        JOIN b.hall h
+        JOIN FETCH b.showtime s
+        JOIN FETCH s.movie m
+        JOIN FETCH b.hall h
         JOIN h.cinema c
         WHERE o.status = 'CONFIRMED'
         AND c.organization.id = :organizationId
-        ORDER BY o.createdAt DESC
         """)
     List<Order> findTop10ByOrganizationWithBookings(
             @Param("organizationId") UUID organizationId,
             Pageable pageable
-        );
+    );
 }

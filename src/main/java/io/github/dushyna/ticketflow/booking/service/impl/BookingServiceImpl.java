@@ -124,6 +124,7 @@ public class BookingServiceImpl implements BookingService {
 
         // 7. Save the Order (Bookings will be saved automatically due to CascadeType.ALL)
         try {
+            orderRepository.save(order);
              orderRepository.flush();
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             log.warn("Concurrent booking attempt detected for seats in showtime: {}", showtime.getId());
@@ -143,7 +144,6 @@ public class BookingServiceImpl implements BookingService {
             // Store Stripe Session ID to find this order during Webhook confirmation
             order.setStripeSessionId(session.getId());
 
-            orderRepository.save(order);
 
             // Return the URL to the frontend for redirection
             return new PaymentResponseDto(session.getUrl());
@@ -324,8 +324,17 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // 6. Save the finalized Order and Bookings to the database
-        orderRepository.save(order);
-        log.info("BOX OFFICE: Order {} successfully completed by cashier {}", order.getId(), cashier.getEmail());
+        try {
+            orderRepository.save(order);
+            orderRepository.flush();
+            log.info("BOX OFFICE: Order {} successfully completed by cashier {}", order.getId(), cashier.getEmail());
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            log.warn("Box office conflict: Seat already taken for showtime: {}", showtime.getId());
+            throw new RestApiException(
+                    HttpStatus.CONFLICT,
+                    translationService.get("booking.seat.taken") // Повертаємо красиву помилку
+            );
+        }
 
         List<UUID> generatedBookingIds = order.getBookings().stream()
                 .map(io.github.dushyna.ticketflow.common.BaseEntity::getId) // Assumes BaseEntity provides getId()
@@ -496,7 +505,7 @@ public class BookingServiceImpl implements BookingService {
         // 2. Fetch data from DB using the updated path layout parameters
         List<Order> cashierOrders = orderRepository.findTop10ByOrganizationWithBookings(
                 cashier.getOrganization().getId(),
-                org.springframework.data.domain.PageRequest.of(0, 10)
+                org.springframework.data.domain.PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("createdAt").descending())
         );
 
         // 3. Map safely into report dto nodes

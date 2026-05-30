@@ -14,6 +14,7 @@ public interface ShowtimeMapper {
     @Mapping(target = "movieTitle", source = "movie.title")
     @Mapping(target = "hallName", source = "hall.name")
     @Mapping(target = "movieId", source = "movie.id")
+    @Mapping(target = "cinemaId", source = "hall.cinema.id")
     ShowtimeResponseDto mapEntityToResponseDto(Showtime entity);
 
     @Mapping(target = "id", ignore = true)

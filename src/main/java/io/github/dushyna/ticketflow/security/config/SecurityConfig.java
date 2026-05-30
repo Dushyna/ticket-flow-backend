@@ -100,7 +100,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/v1/halls/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/showtimes/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/ticket-types/**").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/api/v1/bookings/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/bookings/occupied/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/payments/webhook").permitAll()
                         .requestMatchers("/api/v1/auth/refresh-token").permitAll()
