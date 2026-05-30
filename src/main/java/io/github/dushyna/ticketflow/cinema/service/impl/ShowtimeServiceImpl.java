@@ -130,6 +130,15 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShowtimeResponseDto> getAllActiveShowtimes() {
+        return showtimeRepository.findAll().stream()
+                .filter(showtime -> showtime.getStartTime().isAfter(java.time.Instant.now()))
+                .map(showtimeMapper::mapEntityToResponseDto)
+                .toList();
+    }
+
     private void validateNoConflicts(UUID hallId, Instant start, Instant end, UUID excludeId) {
         boolean hasConflict = showtimeRepository.existsOverlappingShowtime(hallId, start, end, excludeId);
         if (hasConflict) {

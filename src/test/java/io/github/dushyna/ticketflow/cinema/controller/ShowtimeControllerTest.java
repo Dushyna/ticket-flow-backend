@@ -56,6 +56,7 @@ class ShowtimeControllerTest {
 
     private AuthUserDetails adminDetails;
     private AuthUserDetails regularDetails;
+    private final UUID CINEMA_ID = UUID.randomUUID();
     private final UUID MOVIE_ID = UUID.randomUUID();
     private final UUID HALL_ID = UUID.randomUUID();
     private final UUID SHOWTIME_ID = UUID.randomUUID();
@@ -83,7 +84,7 @@ class ShowtimeControllerTest {
         );
 
         ShowtimeResponseDto responseDto = new ShowtimeResponseDto(
-                UUID.randomUUID(), MOVIE_ID, "Interstellar", HALL_ID, "IMAX Hall 1",
+                UUID.randomUUID(), MOVIE_ID, "Interstellar", CINEMA_ID, HALL_ID, "IMAX Hall 1",
                 FUTURE_START, FUTURE_START.plus(3, ChronoUnit.HOURS), new BigDecimal("150.00")
         );
 
@@ -164,7 +165,7 @@ class ShowtimeControllerTest {
                 MOVIE_ID, HALL_ID, FUTURE_START, new BigDecimal("200.00")
         );
         ShowtimeResponseDto responseDto = new ShowtimeResponseDto(
-                SHOWTIME_ID, MOVIE_ID, "Interstellar", HALL_ID, "IMAX Hall 1",
+                SHOWTIME_ID, MOVIE_ID, "Interstellar", CINEMA_ID, HALL_ID, "IMAX Hall 1",
                 FUTURE_START, FUTURE_START.plus(3, ChronoUnit.HOURS), new BigDecimal("200.00")
         );
 
@@ -312,7 +313,7 @@ class ShowtimeControllerTest {
     void getById_Public_Success() throws Exception {
         // Given
         ShowtimeResponseDto responseDto = new ShowtimeResponseDto(
-                SHOWTIME_ID, MOVIE_ID, "Interstellar", HALL_ID, "IMAX Hall 1",
+                SHOWTIME_ID, MOVIE_ID, "Interstellar", CINEMA_ID, HALL_ID, "IMAX Hall 1",
                 Instant.now(), Instant.now().plus(3, ChronoUnit.HOURS), new BigDecimal("150.00")
         );
 
@@ -331,7 +332,7 @@ class ShowtimeControllerTest {
     void getById_Authenticated_Success() throws Exception {
         // Given
         ShowtimeResponseDto responseDto = new ShowtimeResponseDto(
-                SHOWTIME_ID, MOVIE_ID, "Interstellar", HALL_ID, "IMAX Hall 1",
+                SHOWTIME_ID, MOVIE_ID, "Interstellar", CINEMA_ID, HALL_ID, "IMAX Hall 1",
                 Instant.now(), Instant.now().plus(3, ChronoUnit.HOURS), new BigDecimal("150.00")
         );
 
@@ -371,7 +372,7 @@ class ShowtimeControllerTest {
     void getByMovie_Success() throws Exception {
         // Given
         ShowtimeResponseDto showtime = new ShowtimeResponseDto(
-                SHOWTIME_ID, MOVIE_ID, "Interstellar", HALL_ID, "IMAX Hall 1",
+                SHOWTIME_ID, MOVIE_ID, "Interstellar", CINEMA_ID, HALL_ID, "IMAX Hall 1",
                 Instant.now(), Instant.now().plus(3, ChronoUnit.HOURS), new BigDecimal("150.00")
         );
 
@@ -412,7 +413,7 @@ class ShowtimeControllerTest {
     void getByHall_Success() throws Exception {
         // Given
         ShowtimeResponseDto showtime = new ShowtimeResponseDto(
-                SHOWTIME_ID, MOVIE_ID, "Interstellar", HALL_ID, "IMAX Hall 1",
+                SHOWTIME_ID, MOVIE_ID, "Interstellar", CINEMA_ID, HALL_ID, "IMAX Hall 1",
                 Instant.now(), Instant.now().plus(3, ChronoUnit.HOURS), new BigDecimal("150.00")
         );
 
@@ -455,7 +456,7 @@ class ShowtimeControllerTest {
         // Given
         UUID cinemaId = UUID.randomUUID();
         ShowtimeResponseDto showtime = new ShowtimeResponseDto(
-                SHOWTIME_ID, MOVIE_ID, "Interstellar", HALL_ID, "IMAX Hall 1",
+                SHOWTIME_ID, MOVIE_ID, "Interstellar", CINEMA_ID, HALL_ID, "IMAX Hall 1",
                 Instant.now(), Instant.now().plus(3, ChronoUnit.HOURS), new BigDecimal("150.00")
         );
 

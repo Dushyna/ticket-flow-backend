@@ -22,4 +22,6 @@ public interface ShowtimeService {
     List<ShowtimeResponseDto> getShowtimesByCinema(UUID cinemaId);
 
     ShowtimeResponseDto getByIdOrThrow(UUID id);
+
+    List<ShowtimeResponseDto> getAllActiveShowtimes();
 }

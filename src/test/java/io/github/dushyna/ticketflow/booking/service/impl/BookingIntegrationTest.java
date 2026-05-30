@@ -148,14 +148,31 @@ class BookingIntegrationTest extends BaseIT {
         assertThat(createdOrder.getStatus()).isEqualTo(BookingStatus.PENDING);
     }
 
+
     @Test
     @DisplayName("Should throw CONFLICT when trying to book an already occupied seat")
     void shouldPreventDoubleBooking() {
-        // Given: First booking for seat 0:0
-        SeatCoordinateRequestDto seat = new SeatCoordinateRequestDto(0, 0, null);
-        bookingService.createBookings(new BookingCreateDto(showtime.getId(), List.of(seat)), user);
+        // Given
+        Order existingOrder = new Order();
+        existingOrder.setUser(user);
+        existingOrder.setStatus(BookingStatus.CONFIRMED);
+        existingOrder.setTotalPrice(new BigDecimal("100.00"));
 
-        // When: Another attempt to book the SAME seat
+        Booking existingBooking = new Booking();
+        existingBooking.setUser(user);
+        existingBooking.setShowtime(showtime);
+        existingBooking.setHall(showtime.getHall());
+        existingBooking.setRowIndex(0);
+        existingBooking.setColIndex(0);
+        existingBooking.setStatus(BookingStatus.CONFIRMED);
+        existingBooking.setFinalPrice(new BigDecimal("100.00"));
+        existingBooking.setOrder(existingOrder);
+        existingOrder.getBookings().add(existingBooking);
+
+        orderRepository.saveAndFlush(existingOrder);
+
+        // When: Attempt to book the SAME seat via service
+        SeatCoordinateRequestDto seat = new SeatCoordinateRequestDto(0, 0, null);
         BookingCreateDto duplicateDto = new BookingCreateDto(showtime.getId(), List.of(seat));
 
         // Then
